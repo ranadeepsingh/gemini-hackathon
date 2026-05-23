@@ -28,6 +28,8 @@ import AntigravityCatToggle from "@/components/AntigravityCatToggle";
 import AuthAwareHomeLink from "@/components/AuthAwareHomeLink";
 import MouseSpotlight from "@/components/MouseSpotlight";
 
+const DEMO_WORKSPACE_HREF = "/workspace?problem=agentic-matrix-optimizer&session=demo-session-id&reset=true";
+
 const aiPerspectiveCards = [
   {
     name: "Andrej Karpathy",
@@ -141,7 +143,7 @@ export default function Home() {
               Sign In
             </Link>
             <Link 
-              href="/workspace"
+              href={DEMO_WORKSPACE_HREF}
               className="glow-btn bg-agy-cyan text-bg-dark px-4 py-1.5 rounded-md text-sm font-mono font-bold flex items-center gap-1.5 transition-all shadow-[0_0_15px_rgba(0,240,255,0.2)]"
             >
               <Play className="w-3.5 h-3.5 fill-current" />
@@ -175,7 +177,7 @@ export default function Home() {
 
             <div className="flex flex-wrap gap-4 pt-4">
               <Link 
-                href="/workspace"
+                href={DEMO_WORKSPACE_HREF}
                 className="bg-agy-green text-bg-dark px-6 py-3 rounded-lg font-mono font-bold flex items-center gap-2 shadow-[0_0_20px_rgba(0,255,102,0.3)] hover:scale-105 hover:shadow-[0_0_30px_rgba(0,255,102,0.5)] transition-all"
               >
                 <Terminal className="w-4 h-4" />

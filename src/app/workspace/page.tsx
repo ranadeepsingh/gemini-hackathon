@@ -444,6 +444,20 @@ function isReadOnlyFile(filePath: string, problemSlug?: string): boolean {
       lower.endsWith("/financial_advisor.md")
     );
   }
+  if (problemSlug === "skill-log-parser") {
+    return !(
+      lower === "skills/log_parser/scripts/parse.py" ||
+      lower.endsWith("/skills/log_parser/scripts/parse.py") ||
+      lower === "parse.py" ||
+      lower.endsWith("/parse.py")
+    );
+  }
+  if (problemSlug === "python-backend-io-service") {
+    return !(
+      lower === "app.py" ||
+      lower.endsWith("/app.py")
+    );
+  }
   return false;
 }
 

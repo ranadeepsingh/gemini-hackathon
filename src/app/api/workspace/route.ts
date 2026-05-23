@@ -313,6 +313,34 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    if (problemSlug === "skill-log-parser") {
+      const lowerFilename = filename.toLowerCase();
+      const isAllowed =
+        lowerFilename === "skills/log_parser/scripts/parse.py" ||
+        lowerFilename.endsWith("/skills/log_parser/scripts/parse.py") ||
+        lowerFilename === "parse.py" ||
+        lowerFilename.endsWith("/parse.py");
+      if (!isAllowed) {
+        return NextResponse.json(
+          { error: "Access Denied: Only skills/log_parser/scripts/parse.py is editable in this task." },
+          { status: 403 }
+        );
+      }
+    }
+
+    if (problemSlug === "python-backend-io-service") {
+      const lowerFilename = filename.toLowerCase();
+      const isAllowed =
+        lowerFilename === "app.py" ||
+        lowerFilename.endsWith("/app.py");
+      if (!isAllowed) {
+        return NextResponse.json(
+          { error: "Access Denied: Only app.py is editable in this task." },
+          { status: 403 }
+        );
+      }
+    }
+
     fs.mkdirSync(path.dirname(targetPath), { recursive: true });
     fs.writeFileSync(targetPath, code, "utf-8");
 
