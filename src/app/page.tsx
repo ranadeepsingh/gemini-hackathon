@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { motion, AnimatePresence } from "framer-motion";
 import { 
   Terminal, 
   Cpu, 
@@ -16,6 +17,7 @@ import {
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<"agentic" | "skill" | "prompt">("agentic");
+  const [heroView, setHeroView] = useState<"simulation" | "cockpit">("simulation");
   const [simulatedMetrics, setSimulatedMetrics] = useState({
     activeVMs: 4,
     totalTokens: 14205020,
@@ -48,9 +50,8 @@ export default function Home() {
       <header className="sticky top-0 w-full z-40 bg-bg-dark/80 backdrop-blur-md border-b border-border-subtle">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="relative flex items-center justify-center w-8 h-8 rounded-lg bg-agy-cyan/10 border border-agy-cyan/30">
-              <Zap className="w-4 h-4 text-agy-cyan animate-pulse" />
-              <div className="absolute inset-0 bg-agy-cyan/20 blur-sm rounded-lg" />
+            <div className="relative flex items-center justify-center w-9 h-9 rounded-lg bg-bg-panel border border-agy-cyan/20 overflow-hidden shadow-[0_0_10px_rgba(0,240,255,0.15)]">
+              <img src="/assets/yeetcode_logo.png" className="w-full h-full object-cover" alt="YeetCode Logo" />
             </div>
             <span className="font-mono text-xl font-extrabold tracking-widest text-text-main">
               YEET<span className="text-agy-green glow-text-green">CODE</span>
@@ -85,8 +86,8 @@ export default function Home() {
           {/* Hero Left Content */}
           <div className="lg:col-span-6 flex flex-col gap-6">
             <div className="inline-flex items-center gap-2 bg-agy-violet/10 text-agy-violet px-3 py-1 rounded-full text-xs font-mono border border-agy-violet/20 w-fit">
-              <Sparkles className="w-3.5 h-3.5 animate-spin" />
-              NEXT-GEN INTERVIEW LAB FOR GOOGLE VENTURES
+              <Sparkles className="w-3.5 h-3.5 text-agy-violet" />
+              NEXT-GEN INTERVIEW LAB
             </div>
             
             <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight leading-tight">
@@ -140,64 +141,141 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Hero Right Visuals (Futuristic Sandbox Console Panel) */}
-          <div className="lg:col-span-6 relative">
-            <div className="absolute inset-0 bg-agy-cyan/10 blur-[100px] rounded-full pointer-events-none" />
-            <div className="absolute inset-0 bg-agy-violet/5 blur-[120px] rounded-full pointer-events-none" />
+          {/* Hero Right Visuals (Futuristic Sandbox Console Panel with Toggle) */}
+          <div className="lg:col-span-6 flex flex-col">
             
-            <div className="relative rounded-xl border border-border-subtle/80 bg-bg-panel/90 p-1 overflow-hidden glow-cyan">
+            {/* Sliding Toggle Selector */}
+            <div className="flex justify-end gap-2 mb-4 font-mono text-[10px] bg-bg-panel/40 p-1 rounded-lg border border-border-subtle w-fit ml-auto shadow-[0_0_15px_rgba(0,0,0,0.4)]">
+              <button
+                onClick={() => setHeroView("simulation")}
+                className={`px-3 py-1.5 rounded-md transition-all font-bold cursor-pointer ${heroView === "simulation" ? "bg-agy-cyan text-bg-dark font-extrabold shadow-[0_0_10px_rgba(0,240,255,0.3)]" : "text-text-muted hover:text-white"}`}
+              >
+                LIVE SIMULATION
+              </button>
+              <button
+                onClick={() => setHeroView("cockpit")}
+                className={`px-3 py-1.5 rounded-md transition-all font-bold cursor-pointer ${heroView === "cockpit" ? "bg-agy-cyan text-bg-dark font-extrabold shadow-[0_0_10px_rgba(0,240,255,0.3)]" : "text-text-muted hover:text-white"}`}
+              >
+                VIRTUAL COCKPIT
+              </button>
+            </div>
+
+            <div className="relative">
+              <div className="absolute inset-0 bg-agy-cyan/10 blur-[100px] rounded-full pointer-events-none" />
+              <div className="absolute inset-0 bg-agy-violet/5 blur-[120px] rounded-full pointer-events-none" />
               
-              {/* Fake Chrome Bar */}
-              <div className="flex items-center justify-between px-4 py-2 border-b border-border-subtle/50 bg-bg-dark/80 rounded-t-lg">
-                <div className="flex items-center gap-1.5">
-                  <div className="w-3 h-3 rounded-full bg-red-500/80" />
-                  <div className="w-3 h-3 rounded-full bg-yellow-500/80" />
-                  <div className="w-3 h-3 rounded-full bg-green-500/80" />
-                </div>
-                <div className="text-[10px] font-mono text-text-muted flex items-center gap-1 bg-bg-panel px-3 py-0.5 rounded border border-border-subtle/30">
-                  <span className="w-1.5 h-1.5 bg-agy-cyan rounded-full animate-ping" />
-                  session_matrix_simulator.py
-                </div>
-                <div className="w-8" />
-              </div>
-
-              {/* Code panel with simulated floating evaluation parameters */}
-              <div className="p-5 font-mono text-xs text-text-muted bg-bg-dark/95 min-h-[340px] flex flex-col justify-between">
-                <div>
-                  <div className="text-agy-green">{"// Initializing Google Antigravity Agent Observer..."}</div>
-                  <div className="text-text-main mt-1">import google.antigravity as agy</div>
-                  <div className="text-text-main">import gemini_evaluator as judge</div>
-                  <div className="text-agy-violet mt-3">async def evaluate_candidate(diff, logs):</div>
-                  <div className="pl-4 text-text-main mt-0.5">agent_telemetry = agy.get_observability_hooks()</div>
-                  <div className="pl-4 text-text-green">assert agent_telemetry.thoughts_token_count &gt; 0</div>
-                  <div className="pl-4 text-agy-cyan">judge_report = await judge.trigger_consensus_of_3(</div>
-                  <div className="pl-8 text-text-muted">model=&quot;gemini-3.5-flash&quot;,</div>
-                  <div className="pl-8 text-text-muted">thinking_level=&quot;medium&quot;</div>
-                  <div className="pl-4 text-agy-cyan">)</div>
-                  <div className="pl-4 text-agy-green">return judge_report.aggregate_median_score()</div>
-                </div>
-
-                <div className="border-t border-border-subtle/50 pt-4 mt-6">
-                  <div className="flex justify-between items-center text-xs font-mono mb-2">
-                    <span className="text-agy-cyan flex items-center gap-1">
-                      <Cpu className="w-3.5 h-3.5 animate-pulse" />
-                      SYS.MONITOR
-                    </span>
-                    <span className="text-agy-green">ONLINE</span>
+              <div className="relative rounded-xl border border-border-subtle/80 bg-bg-panel/90 p-1 overflow-hidden glow-cyan">
+                
+                {/* Fake Chrome Bar */}
+                <div className="flex items-center justify-between px-4 py-2 border-b border-border-subtle/50 bg-bg-dark/80 rounded-t-lg">
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-3 h-3 rounded-full bg-red-500/80" />
+                    <div className="w-3 h-3 rounded-full bg-yellow-500/80" />
+                    <div className="w-3 h-3 rounded-full bg-green-500/80" />
                   </div>
-                  
-                  <div className="grid grid-cols-2 gap-3 text-[10px]">
-                    <div className="bg-bg-panel/80 p-2.5 rounded border border-border-subtle/50 flex flex-col justify-between">
-                      <span className="text-text-muted">GEMINI PROMPT SENT</span>
-                      <span className="text-text-main text-sm font-bold mt-1">100% OK</span>
-                    </div>
-                    <div className="bg-bg-panel/80 p-2.5 rounded border border-border-subtle/50 flex flex-col justify-between">
-                      <span className="text-text-muted">JUDGE LATENCY</span>
-                      <span className="text-agy-violet text-sm font-bold mt-1">{simulatedMetrics.geminiLatency}s</span>
-                    </div>
+                  <div className="text-[10px] font-mono text-text-muted flex items-center gap-1 bg-bg-panel px-3 py-0.5 rounded border border-border-subtle/30">
+                    <span className="w-1.5 h-1.5 bg-agy-cyan rounded-full animate-ping" />
+                    {heroView === "simulation" ? "session_matrix_simulator.py" : "command_cockpit_hud.sys"}
                   </div>
+                  <div className="w-8" />
                 </div>
 
+                <AnimatePresence mode="wait">
+                  {heroView === "simulation" ? (
+                    <motion.div
+                      key="simulation"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      transition={{ duration: 0.2 }}
+                      className="p-5 font-mono text-xs text-text-muted bg-bg-dark/95 min-h-[340px] flex flex-col justify-between"
+                    >
+                      <div>
+                        <div className="text-agy-green">{"// Initializing Google Antigravity Agent Observer..."}</div>
+                        <div className="text-text-main mt-1">import google.antigravity as agy</div>
+                        <div className="text-text-main">import gemini_evaluator as judge</div>
+                        <div className="text-agy-violet mt-3">async def evaluate_candidate(diff, logs):</div>
+                        <div className="pl-4 text-text-main mt-0.5">agent_telemetry = agy.get_observability_hooks()</div>
+                        <div className="pl-4 text-text-green">assert agent_telemetry.thoughts_token_count &gt; 0</div>
+                        <div className="pl-4 text-agy-cyan">judge_report = await judge.trigger_consensus_of_3(</div>
+                        <div className="pl-8 text-text-muted">model=&quot;gemini-3.5-flash&quot;,</div>
+                        <div className="pl-8 text-text-muted">thinking_level=&quot;medium&quot;</div>
+                        <div className="pl-4 text-agy-cyan">)</div>
+                        <div className="pl-4 text-agy-green">return judge_report.aggregate_median_score()</div>
+                      </div>
+
+                      <div className="border-t border-border-subtle/50 pt-4 mt-6">
+                        <div className="flex justify-between items-center text-xs font-mono mb-2">
+                          <span className="text-agy-cyan flex items-center gap-1">
+                            <Cpu className="w-3.5 h-3.5 animate-pulse" />
+                            SYS.MONITOR
+                          </span>
+                          <span className="text-agy-green">ONLINE</span>
+                        </div>
+                        
+                        <div className="grid grid-cols-2 gap-3 text-[10px]">
+                          <div className="bg-bg-panel/80 p-2.5 rounded border border-border-subtle/50 flex flex-col justify-between">
+                            <span className="text-text-muted">GEMINI PROMPT SENT</span>
+                            <span className="text-text-main text-sm font-bold mt-1">100% OK</span>
+                          </div>
+                          <div className="bg-bg-panel/80 p-2.5 rounded border border-border-subtle/50 flex flex-col justify-between">
+                            <span className="text-text-muted">JUDGE LATENCY</span>
+                            <span className="text-agy-violet text-sm font-bold mt-1">{simulatedMetrics.geminiLatency}s</span>
+                          </div>
+                        </div>
+                      </div>
+                    </motion.div>
+                  ) : (
+                    <motion.div
+                      key="cockpit"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      transition={{ duration: 0.2 }}
+                      className="relative min-h-[340px] bg-bg-dark/95 flex flex-col justify-between overflow-hidden"
+                    >
+                      <div className="absolute inset-0 opacity-45">
+                        <img src="/assets/hero_graphic.png" className="w-full h-full object-cover" alt="Virtual Cockpit" />
+                      </div>
+                      
+                      {/* Decorative Scanline Overlay */}
+                      <div className="absolute inset-0 bg-gradient-to-t from-bg-dark via-transparent to-transparent pointer-events-none" />
+                      <div className="absolute top-0 left-0 w-full h-[1px] bg-agy-cyan opacity-40 shadow-[0_0_8px_#00f0ff] moving-scan pointer-events-none" />
+                      
+                      {/* High Tech overlay stats */}
+                      <div className="relative z-10 p-5 flex flex-col justify-between h-full min-h-[340px]">
+                        <div className="space-y-1 bg-bg-dark/85 backdrop-blur-sm p-3 rounded-lg border border-agy-cyan/25 w-fit shadow-[0_4px_15px_rgba(0,0,0,0.5)]">
+                          <div className="text-[10px] font-mono text-agy-cyan flex items-center gap-1.5 font-bold">
+                            <span className="w-2 h-2 rounded-full bg-agy-cyan animate-pulse" />
+                            CORE CHASSIS: AGY-COCKPIT-01
+                          </div>
+                          <div className="text-[9px] font-mono text-text-muted uppercase tracking-wider">COORDINATES: GCP-US-WEST1-B</div>
+                          <div className="text-[9px] font-mono text-text-muted uppercase tracking-wider">SECURITY PROTOCOL: SHIELD MATRIX ACTIVE</div>
+                        </div>
+
+                        <div className="bg-bg-dark/90 backdrop-blur-sm p-4 rounded-lg border border-border-subtle/50 mt-auto shadow-[0_-4px_15px_rgba(0,0,0,0.5)]">
+                          <div className="flex justify-between items-center text-xs font-mono mb-2">
+                            <span className="text-agy-cyan flex items-center gap-1.5 font-bold">
+                              <Cpu className="w-3.5 h-3.5 animate-pulse text-agy-cyan" />
+                              SYS.CHAMBER
+                            </span>
+                            <span className="text-agy-green font-bold">OPTIMIZED</span>
+                          </div>
+                          <div className="grid grid-cols-2 gap-3 text-[10px]">
+                            <div className="bg-bg-panel/80 p-2.5 rounded border border-border-subtle/50">
+                              <span className="text-text-muted block text-[8px] uppercase tracking-wider">GCP WARM VM POOLS</span>
+                              <span className="text-text-main text-xs font-bold mt-1 block font-mono">240,000 BUFFERS</span>
+                            </div>
+                            <div className="bg-bg-panel/80 p-2.5 rounded border border-border-subtle/50">
+                              <span className="text-text-muted block text-[8px] uppercase tracking-wider">SANDBOX ENGINE</span>
+                              <span className="text-agy-green text-xs font-bold mt-1 block font-mono">DOCKER-GCE-READY</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             </div>
 

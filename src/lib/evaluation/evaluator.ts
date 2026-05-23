@@ -114,8 +114,9 @@ Calculate the score_aggregate as the mathematical average of the three. Write a 
     const medianIndex = Math.floor(validResults.length / 2);
     
     return validResults[medianIndex];
-  } catch (err: any) {
-    console.error("Gemini consensus evaluation crashed, generating fallback report:", err.message);
+  } catch (err) {
+    const errMsg = err instanceof Error ? err.message : String(err);
+    console.error("Gemini consensus evaluation crashed, generating fallback report:", errMsg);
     return generateFallbackMockGrade(problemSlug);
   }
 }

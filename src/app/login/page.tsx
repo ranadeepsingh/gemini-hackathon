@@ -13,7 +13,8 @@ import {
   Activity, 
   Database,
   Sparkles,
-  Zap
+  Zap,
+  User
 } from "lucide-react";
 import { supabase } from "@/lib/supabase/client";
 
@@ -21,8 +22,11 @@ export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [username, setUsername] = useState("");
+  const [role, setRole] = useState<"candidate" | "interviewer">("candidate");
   const [isLoading, setIsLoading] = useState(false);
-  const [authMode, setAuthMode] = useState<"magic-link" | "password">("magic-link");
+  const [authMode, setAuthMode] = useState<"magic-link" | "signin" | "signup">("magic-link");
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [liveStats, setLiveStats] = useState({
     activeSecures: 148,
@@ -60,18 +64,49 @@ export default function LoginPage() {
           type: "success",
           text: "Verification link sent to your email. Check your inbox!",
         });
-      } else {
+      } else if (authMode === "signin") {
         const { error } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
         if (error) throw error;
         router.push("/problems");
+      } else {
+        // Sign Up Flow with custom profile metadata
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: {
+              full_name: fullName,
+              username: username || email.split("@")[0],
+              role: role,
+            },
+            emailRedirectTo: `${window.location.origin}/problems`,
+          },
+        });
+        if (error) throw error;
+
+        if (data?.session) {
+          setMessage({
+            type: "success",
+            text: "Secure node registered! Transferring telemetry logs...",
+          });
+          setTimeout(() => {
+            router.push("/problems");
+          }, 1500);
+        } else {
+          setMessage({
+            type: "success",
+            text: "Identity registration successful. Check your email to verify your access node link!",
+          });
+        }
       }
-    } catch (err: any) {
+    } catch (err) {
+      const errMsg = err instanceof Error ? err.message : "An authentication error occurred.";
       setMessage({
         type: "error",
-        text: err.message || "An authentication error occurred.",
+        text: errMsg,
       });
     } finally {
       setIsLoading(false);
@@ -90,6 +125,9 @@ export default function LoginPage() {
     setTimeout(() => {
       // Set local storage or state to signal we are logged in as a mock user if needed, 
       // or route to problems.
+      if (typeof window !== "undefined") {
+        localStorage.setItem("demo_role", role);
+      }
       router.push("/problems");
     }, 1500);
   };
@@ -111,10 +149,10 @@ export default function LoginPage() {
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ duration: 0.5, type: "spring" }}
-            className="relative flex items-center justify-center w-16 h-16 rounded-xl border border-agy-green/30 bg-bg-panel/80 shadow-[0_0_20px_rgba(0,255,102,0.1)] mb-4 overflow-hidden"
+            className="relative flex items-center justify-center w-16 h-16 rounded-xl border border-agy-green/30 bg-bg-panel/80 shadow-[0_0_20px_rgba(0,255,102,0.15)] mb-4 overflow-hidden"
           >
             <div className="absolute inset-0 bg-gradient-to-br from-agy-green/10 to-transparent" />
-            <Cpu className="w-8 h-8 text-agy-green animate-pulse" />
+            <img src="/assets/yeetcode_logo.png" className="w-12 h-12 object-contain" alt="YeetCode Logo" />
           </motion.div>
           <motion.h1 
             initial={{ y: 20, opacity: 0 }}
@@ -147,9 +185,9 @@ export default function LoginPage() {
           {/* Tab selector */}
           <div className="flex border-b border-slate-800/80 mb-6 font-mono text-xs">
             <button
-              onClick={() => setAuthMode("magic-link")}
-              className={`flex-1 pb-3 text-center transition-colors relative ${
-                authMode === "magic-link" ? "text-agy-green" : "text-text-muted hover:text-white"
+              onClick={() => { setAuthMode("magic-link"); setMessage(null); }}
+              className={`flex-1 pb-3 text-center transition-colors relative cursor-pointer ${
+                authMode === "magic-link" ? "text-agy-green font-bold" : "text-text-muted hover:text-white"
               }`}
             >
               MAGIC LINK
@@ -161,13 +199,27 @@ export default function LoginPage() {
               )}
             </button>
             <button
-              onClick={() => setAuthMode("password")}
-              className={`flex-1 pb-3 text-center transition-colors relative ${
-                authMode === "password" ? "text-agy-green" : "text-text-muted hover:text-white"
+              onClick={() => { setAuthMode("signin"); setMessage(null); }}
+              className={`flex-1 pb-3 text-center transition-colors relative cursor-pointer ${
+                authMode === "signin" ? "text-agy-green font-bold" : "text-text-muted hover:text-white"
               }`}
             >
-              CREDENTIALS
-              {authMode === "password" && (
+              SIGN IN
+              {authMode === "signin" && (
+                <motion.div 
+                  layoutId="activeTabBorder" 
+                  className="absolute bottom-0 left-0 right-0 h-[2px] bg-agy-green" 
+                />
+              )}
+            </button>
+            <button
+              onClick={() => { setAuthMode("signup"); setMessage(null); }}
+              className={`flex-1 pb-3 text-center transition-colors relative cursor-pointer ${
+                authMode === "signup" ? "text-agy-green font-bold" : "text-text-muted hover:text-white"
+              }`}
+            >
+              SIGN UP
+              {authMode === "signup" && (
                 <motion.div 
                   layoutId="activeTabBorder" 
                   className="absolute bottom-0 left-0 right-0 h-[2px] bg-agy-green" 
@@ -177,6 +229,92 @@ export default function LoginPage() {
           </div>
 
           <form onSubmit={handleSupabaseAuth} className="space-y-4">
+            {/* Full Name & Username for Signup */}
+            <AnimatePresence mode="popLayout">
+              {authMode === "signup" && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="space-y-4 overflow-hidden mb-1"
+                >
+                  {/* Full Name Field */}
+                  <div>
+                    <label className="block text-xs font-mono text-text-muted uppercase tracking-wider mb-1.5 pl-1">
+                      Full Name
+                    </label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-text-muted">
+                        <User className="w-4 h-4" />
+                      </div>
+                      <input
+                        type="text"
+                        required={authMode === "signup"}
+                        value={fullName}
+                        onChange={(e) => setFullName(e.target.value)}
+                        placeholder="John Doe"
+                        className="w-full pl-10 pr-4 py-3 bg-bg-dark/80 rounded-xl border border-slate-800/80 focus:border-agy-green/50 text-white font-mono text-sm placeholder:text-text-muted/50 outline-none transition-all shadow-[inset_0_2px_4px_rgba(0,0,0,0.3)]"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Username/Alias Field */}
+                  <div>
+                    <label className="block text-xs font-mono text-text-muted uppercase tracking-wider mb-1.5 pl-1">
+                      Identity Handle / Alias
+                    </label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-text-muted">
+                        <Terminal className="w-4 h-4" />
+                      </div>
+                      <input
+                        type="text"
+                        required={authMode === "signup"}
+                        value={username}
+                        onChange={(e) => setUsername(e.target.value)}
+                        placeholder="cyber_pioneer"
+                        className="w-full pl-10 pr-4 py-3 bg-bg-dark/80 rounded-xl border border-slate-800/80 focus:border-agy-green/50 text-white font-mono text-sm placeholder:text-text-muted/50 outline-none transition-all shadow-[inset_0_2px_4px_rgba(0,0,0,0.3)]"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Access Role Selector */}
+                  <div>
+                    <label className="block text-xs font-mono text-text-muted uppercase tracking-wider mb-1.5 pl-1">
+                      Identity Access Role
+                    </label>
+                    <div className="grid grid-cols-2 gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setRole("candidate")}
+                        className={`py-2 px-3 rounded-xl border font-mono text-xs flex items-center justify-center gap-1.5 cursor-pointer transition-all ${
+                          role === "candidate"
+                            ? "border-agy-green bg-agy-green/10 text-agy-green shadow-[0_0_15px_rgba(0,255,102,0.15)]"
+                            : "border-slate-800 bg-bg-dark/40 text-text-muted hover:text-white hover:border-slate-700"
+                        }`}
+                      >
+                        <Zap className="w-3.5 h-3.5" />
+                        <span>CANDIDATE</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setRole("interviewer")}
+                        className={`py-2 px-3 rounded-xl border font-mono text-xs flex items-center justify-center gap-1.5 cursor-pointer transition-all ${
+                          role === "interviewer"
+                            ? "border-agy-cyan bg-agy-cyan/10 text-agy-cyan shadow-[0_0_15px_rgba(0,240,255,0.15)]"
+                            : "border-slate-800 bg-bg-dark/40 text-text-muted hover:text-white hover:border-slate-700"
+                        }`}
+                      >
+                        <Database className="w-3.5 h-3.5" />
+                        <span>INTERVIEWER</span>
+                      </button>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
             {/* Email Field */}
             <div>
               <label className="block text-xs font-mono text-text-muted uppercase tracking-wider mb-1.5 pl-1">
@@ -199,15 +337,15 @@ export default function LoginPage() {
 
             {/* Password Field */}
             <AnimatePresence mode="popLayout">
-              {authMode === "password" && (
+              {(authMode === "signin" || authMode === "signup") && (
                 <motion.div
                   initial={{ height: 0, opacity: 0 }}
                   animate={{ height: "auto", opacity: 1 }}
                   exit={{ height: 0, opacity: 0 }}
                   transition={{ duration: 0.2 }}
-                  className="overflow-hidden"
+                  className="overflow-hidden mt-1"
                 >
-                  <label className="block text-xs font-mono text-text-muted uppercase tracking-wider mb-1.5 pl-1 mt-1">
+                  <label className="block text-xs font-mono text-text-muted uppercase tracking-wider mb-1.5 pl-1">
                     Node Keyphrase
                   </label>
                   <div className="relative">
@@ -216,7 +354,7 @@ export default function LoginPage() {
                     </div>
                     <input
                       type="password"
-                      required
+                      required={authMode === "signin" || authMode === "signup"}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="••••••••••••"
@@ -259,12 +397,12 @@ export default function LoginPage() {
             >
               {isLoading ? (
                 <>
-                  <Activity className="w-4 h-4 animate-spin" />
+                  <Activity className="w-4 h-4 animate-pulse" />
                   AUTHENTICATING...
                 </>
               ) : (
                 <>
-                  INITIALIZE ACCESS
+                  {authMode === "magic-link" ? "INITIALIZE ACCESS" : authMode === "signin" ? "SIGN INTO NODE" : "REGISTER SECURE NODE"}
                   <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                 </>
               )}

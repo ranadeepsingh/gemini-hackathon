@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "vercel-setup": "node scripts/vercel-setup.mjs"
+    "vercel-setup": "node scripts/vercel-setup.mjs",
+    "vercel-env-sync": "node scripts/vercel-env-sync.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.106.1",

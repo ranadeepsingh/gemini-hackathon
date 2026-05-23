@@ -32,7 +32,7 @@ interface Problem {
   difficulty: "easy" | "medium" | "hard";
   category: "agentic_flow" | "skill_verification" | "prompt_engineering";
   starter_code: string;
-  test_manifest: any;
+  test_manifest: Record<string, unknown>;
   created_at: string;
 }
 
@@ -64,14 +64,84 @@ const LOCAL_FALLBACK_PROBLEMS: Problem[] = [
     id: "00000000-0000-0000-0000-000000000003",
     title: "AI Prompt Engineering: Adversarial Defense Sandbox",
     slug: "prompt-adversarial-defense",
-    description: "Design a system instruction and validation wrapper for a financial advisory chat agent that is immune to jailbreaking.",
+    description: "Design a system instruction and validation wrapper for a financial advisory chat agent that is completely immune to jailbreaking and adversarial prompt injection.",
     difficulty: "easy",
+    category: "prompt_engineering",
+    starter_code: "",
+    test_manifest: {},
+    created_at: new Date().toISOString()
+  },
+  {
+    id: "00000000-0000-0000-0000-000000000004",
+    title: "AI Agentic Engineering: Dependency Conflict Resolver",
+    slug: "agentic-dependency-resolver",
+    description: "Deploy an autonomous AI agent to resolve cascading dependency version conflicts in a legacy microservice.",
+    difficulty: "hard",
+    category: "agentic_flow",
+    starter_code: "",
+    test_manifest: {},
+    created_at: new Date().toISOString()
+  },
+  {
+    id: "00000000-0000-0000-0000-000000000005",
+    title: "AI Agentic Engineering: Self-Healing Log Monitor",
+    slug: "agentic-anomaly-detector",
+    description: "Build an autonomous diagnostic daemon that listens to stream log channels and dynamically patches memory pool leaks.",
+    difficulty: "hard",
+    category: "agentic_flow",
+    starter_code: "",
+    test_manifest: {},
+    created_at: new Date().toISOString()
+  },
+  {
+    id: "00000000-0000-0000-0000-000000000006",
+    title: "AI Skill Writing: Kubernetes Crash Triage",
+    slug: "skill-k8s-debugger",
+    description: "Construct an Antigravity Skill (`k8s_triage`) that inspects Pod crash loops and decodes container config states safely.",
+    difficulty: "medium",
+    category: "skill_verification",
+    starter_code: "",
+    test_manifest: {},
+    created_at: new Date().toISOString()
+  },
+  {
+    id: "00000000-0000-0000-0000-000000000007",
+    title: "AI Skill Writing: SQL Safe Migration",
+    slug: "skill-db-migrator",
+    description: "Create an Antigravity Skill (`schema_migrator`) that validates index safety and generates safe transaction rollback scripts.",
+    difficulty: "medium",
+    category: "skill_verification",
+    starter_code: "",
+    test_manifest: {},
+    created_at: new Date().toISOString()
+  },
+  {
+    id: "00000000-0000-0000-0000-000000000008",
+    title: "AI Prompt Engineering: JSON Schema Guard",
+    slug: "prompt-pydantic-guard",
+    description: "Formulate a defensive system prompt and validation regex wrapper that forces strict JSON formatting, preventing text-mode leakage.",
+    difficulty: "easy",
+    category: "prompt_engineering",
+    starter_code: "",
+    test_manifest: {},
+    created_at: new Date().toISOString()
+  },
+  {
+    id: "00000000-0000-0000-0000-000000000009",
+    title: "AI Prompt Engineering: Clinical Transcript Shield",
+    slug: "prompt-data-leak-shield",
+    description: "Design a telehealth transcript summarizer prompt that absolutely anonymizes or redacts patient-identifying data (PII) under adversarial roleplays.",
+    difficulty: "medium",
     category: "prompt_engineering",
     starter_code: "",
     test_manifest: {},
     created_at: new Date().toISOString()
   }
 ];
+
+function generateGceInstanceName(slug: string): string {
+  return `yeetcode-sandbox-${slug}-${Math.floor(Math.random() * 10000)}`;
+}
 
 export default function ProblemsPage() {
   const router = useRouter();
@@ -81,11 +151,53 @@ export default function ProblemsPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [selectedDifficulty, setSelectedDifficulty] = useState<string>("all");
   
+  // Authenticated user state
+  const [user, setUser] = useState<{ id: string; email?: string } | null>(null);
+  const [profile, setProfile] = useState<{ full_name?: string; role?: string } | null>(null);
+
   // Custom JSONL Suite Uploader State
   const [dragActive, setDragActive] = useState(false);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [uploadStatus, setUploadStatus] = useState<"idle" | "uploading" | "success" | "error">("idle");
   const [uploadMessage, setUploadMessage] = useState("");
+
+  useEffect(() => {
+    async function loadUserAndProfile() {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          setUser(user);
+          // Fetch profile details
+          const { data: profileData } = await supabase
+            .from("profiles")
+            .select("*")
+            .eq("id", user.id)
+            .single();
+          if (profileData) {
+            setProfile(profileData);
+          }
+        } else {
+          // Check for local demo bypass role
+          if (typeof window !== "undefined") {
+            const demoRole = localStorage.getItem("demo_role");
+            if (demoRole) {
+              setUser({
+                id: "demo-user-id",
+                email: `${demoRole}@yeetcode.demo`
+              });
+              setProfile({
+                full_name: `Demo ${demoRole.charAt(0).toUpperCase() + demoRole.slice(1)}`,
+                role: demoRole === "candidate" ? "CANDIDATE ACCESS" : "INTERVIEWER ACCESS"
+              });
+            }
+          }
+        }
+      } catch (err) {
+        console.warn("Could not load user or profile from Supabase", err);
+      }
+    }
+    loadUserAndProfile();
+  }, []);
 
   useEffect(() => {
     async function fetchProblems() {
@@ -100,8 +212,9 @@ export default function ProblemsPage() {
         if (data && data.length > 0) {
           setProblems(data);
         }
-      } catch (err: any) {
-        console.warn("Supabase fetch failed, utilizing robust local fallback states.", err.message);
+      } catch (err) {
+        const errMsg = err instanceof Error ? err.message : String(err);
+        console.warn("Supabase fetch failed, utilizing robust local fallback states.", errMsg);
         // Fallback already pre-seeded in hook state
       } finally {
         setLoading(false);
@@ -178,7 +291,7 @@ export default function ProblemsPage() {
           candidate_id: candidateId,
           problem_id: problem.id,
           status: "active",
-          gce_instance_name: `yeetcode-sandbox-${problem.slug}-${Math.floor(Math.random() * 10000)}`,
+          gce_instance_name: generateGceInstanceName(problem.slug),
           gce_instance_zone: "us-central1-a",
           started_at: new Date().toISOString()
         })
@@ -192,7 +305,7 @@ export default function ProblemsPage() {
       } else if (data) {
         router.push(`/workspace?problem=${problem.slug}&session=${data.id}`);
       }
-    } catch (err: any) {
+    } catch (err) {
       console.warn("Routing fallback:", err);
       router.push(`/workspace?problem=${problem.slug}&session=demo-session-id`);
     }
@@ -200,6 +313,9 @@ export default function ProblemsPage() {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("demo_role");
+    }
     router.push("/login");
   };
 
@@ -213,12 +329,12 @@ export default function ProblemsPage() {
       <header className="sticky top-0 z-50 border-b border-slate-800/80 bg-bg-dark/85 backdrop-blur-xl">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg border border-agy-green/30 bg-bg-panel flex items-center justify-center shadow-[0_0_10px_rgba(0,255,102,0.1)]">
-              <Cpu className="w-4 h-4 text-agy-green animate-pulse" />
+            <div className="relative flex items-center justify-center w-9 h-9 rounded-lg bg-bg-panel border border-agy-cyan/20 overflow-hidden shadow-[0_0_10px_rgba(0,240,255,0.15)]">
+              <img src="/assets/yeetcode_logo.png" className="w-full h-full object-cover" alt="YeetCode Logo" />
             </div>
             <div>
-              <span className="font-extrabold tracking-wider text-sm">YEETCODE</span>
-              <span className="text-[9px] font-mono text-agy-green block uppercase tracking-widest -mt-1">ADMIN PORTAL</span>
+              <span className="font-extrabold tracking-wider text-sm block">YEETCODE</span>
+              <span className="text-[9px] font-mono text-agy-green block uppercase tracking-widest -mt-0.5">ADMIN PORTAL</span>
             </div>
           </div>
 
@@ -227,9 +343,33 @@ export default function ProblemsPage() {
               <div className="w-1.5 h-1.5 rounded-full bg-agy-green animate-pulse" />
               <span>GCP CLUSTER ACTIVE</span>
             </div>
+
+            {/* Profile / Guest HUD state */}
+            {user ? (
+              <div className="flex items-center gap-3 border-l border-slate-800/80 pl-6 h-8">
+                <div className="w-8 h-8 rounded-full bg-agy-green/10 border border-agy-green/35 flex items-center justify-center text-[10px] font-mono text-agy-green font-bold shadow-[0_0_10px_rgba(0,255,102,0.1)]">
+                  {profile?.full_name ? profile.full_name.substring(0, 2).toUpperCase() : user.email?.substring(0, 2).toUpperCase()}
+                </div>
+                <div className="text-left font-mono hidden md:block">
+                  <span className="text-[11px] text-text-main block leading-none font-bold uppercase tracking-wide">{profile?.full_name || user.email?.split("@")[0]}</span>
+                  <span className="text-[8px] text-agy-green block uppercase tracking-widest mt-1 font-semibold">{profile?.role || "CANDIDATE ACCESS"}</span>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center gap-3 border-l border-slate-800/80 pl-6 h-8">
+                <div className="w-8 h-8 rounded-full bg-slate-800/60 border border-slate-750 flex items-center justify-center text-[9px] font-mono text-text-muted font-bold">
+                  GS
+                </div>
+                <div className="text-left font-mono hidden md:block">
+                  <span className="text-[11px] text-text-muted block leading-none font-bold uppercase">GUEST_SESSION</span>
+                  <span className="text-[8px] text-text-muted/65 block uppercase tracking-widest mt-1">PRESENTATION</span>
+                </div>
+              </div>
+            )}
+
             <button 
               onClick={handleLogout}
-              className="flex items-center gap-1.5 font-mono text-xs text-text-muted hover:text-text-red transition-colors cursor-pointer"
+              className="flex items-center gap-1.5 font-mono text-xs text-text-muted hover:text-text-red transition-colors cursor-pointer border-l border-slate-800/80 pl-6 h-8"
             >
               <LogOut className="w-3.5 h-3.5" />
               <span>EXIT</span>
@@ -313,7 +453,7 @@ export default function ProblemsPage() {
           <div className="space-y-4">
             {loading ? (
               <div className="flex flex-col items-center justify-center py-20 border border-slate-800/40 rounded-xl bg-bg-panel/30">
-                <Activity className="w-8 h-8 text-agy-green animate-spin mb-4" />
+                <Activity className="w-8 h-8 text-agy-green animate-pulse mb-4" />
                 <span className="font-mono text-xs text-text-muted uppercase tracking-wider">Synchronizing secure databases...</span>
               </div>
             ) : filteredProblems.length === 0 ? (
@@ -322,7 +462,7 @@ export default function ProblemsPage() {
                 <span className="font-mono text-sm text-text-muted">No challenge matrices matched current query filter profiles.</span>
               </div>
             ) : (
-              <AnimatePresence mode="popLayout">
+              <AnimatePresence mode="wait">
                 {filteredProblems.map((prob) => (
                   <motion.div
                     key={prob.id}
@@ -330,9 +470,24 @@ export default function ProblemsPage() {
                     initial={{ opacity: 0, y: 12 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -12 }}
-                    className="relative group p-6 rounded-xl border border-slate-800/80 bg-bg-panel/50 hover:border-slate-700/80 hover:bg-bg-panel/85 transition-all duration-300 shadow-[10px_10px_30px_rgba(0,0,0,0.3)] overflow-hidden cursor-pointer"
+                    whileHover={{ y: -4, scale: 1.015, transition: { duration: 0.2, ease: "easeOut" } }}
+                    className={`relative group p-6 rounded-xl border bg-bg-panel/50 hover:bg-bg-panel/85 transition-all duration-300 shadow-[10px_10px_30px_rgba(0,0,0,0.3)] overflow-hidden cursor-pointer ${
+                      prob.difficulty === "easy" ? "border-slate-800/80 hover:border-agy-green/35 hover:shadow-[0_0_25px_rgba(0,255,102,0.06)]" :
+                      prob.difficulty === "medium" ? "border-slate-800/80 hover:border-agy-cyan/35 hover:shadow-[0_0_25px_rgba(0,240,255,0.06)]" :
+                      "border-slate-800/80 hover:border-agy-violet/35 hover:shadow-[0_0_25px_rgba(139,92,246,0.06)]"
+                    }`}
                     onClick={() => handleStartSession(prob)}
                   >
+                    {/* Spotlight overlay */}
+                    <div className="absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity duration-500 pointer-events-none bg-[radial-gradient(circle_at_center,var(--spotlight-color),transparent_70%)]"
+                      style={{
+                        "--spotlight-color": 
+                          prob.difficulty === "easy" ? "#00ff66" :
+                          prob.difficulty === "medium" ? "#00f0ff" :
+                          "#8b5cf6"
+                      } as React.CSSProperties}
+                    />
+
                     {/* Glow border lines */}
                     <div className={`absolute left-0 inset-y-0 w-1 transition-all duration-300 ${
                       prob.difficulty === "easy" ? "bg-agy-green shadow-[0_0_10px_#00ff66]" :
@@ -340,7 +495,7 @@ export default function ProblemsPage() {
                       "bg-agy-violet shadow-[0_0_10px_#8b5cf6]"
                     }`} />
 
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10">
                       <div className="space-y-2">
                         <div className="flex flex-wrap items-center gap-2">
                           {/* Category Tag */}
@@ -410,12 +565,17 @@ export default function ProblemsPage() {
               onDragOver={handleDrag}
               onDragLeave={handleDrag}
               onDrop={handleDrop}
-              className={`relative border-2 border-dashed rounded-xl p-6 flex flex-col items-center justify-center text-center transition-all duration-300 min-h-[220px] ${
+              className={`relative border-2 border-dashed rounded-xl p-6 flex flex-col items-center justify-center text-center transition-all duration-300 min-h-[220px] overflow-hidden ${
                 dragActive 
-                  ? "border-agy-cyan bg-agy-cyan/5 shadow-[0_0_20px_rgba(0,240,255,0.1)]" 
-                  : "border-slate-800 bg-bg-dark/40 hover:border-slate-700/80 hover:bg-bg-dark/60"
+                  ? "border-agy-cyan bg-agy-cyan/5 shadow-[0_0_20px_rgba(0,240,255,0.15)]" 
+                  : "border-slate-800 bg-bg-dark/40 hover:border-slate-700/80 hover:bg-bg-dark/60 hover:shadow-[0_0_20px_rgba(0,240,255,0.03)]"
               }`}
             >
+              {/* Pulsing visual scan effect when drag active */}
+              {dragActive && (
+                <div className="absolute inset-0 pointer-events-none bg-gradient-to-b from-transparent via-agy-cyan/5 to-transparent animate-[scan_2s_linear_infinite]" />
+              )}
+
               <input
                 type="file"
                 id="file-upload-input"
@@ -432,12 +592,12 @@ export default function ProblemsPage() {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    className="flex flex-col items-center justify-center gap-2 cursor-pointer w-full h-full"
+                    className="flex flex-col items-center justify-center gap-2 cursor-pointer w-full h-full group/uploader"
                   >
-                    <div className="w-12 h-12 rounded-full border border-slate-800/60 bg-bg-panel/40 flex items-center justify-center text-text-muted mb-2 shadow-[0_4px_10px_rgba(0,0,0,0.3)]">
-                      <UploadCloud className="w-6 h-6 text-text-muted" />
+                    <div className="w-12 h-12 rounded-full border border-slate-800/60 bg-bg-panel/40 flex items-center justify-center text-text-muted mb-2 shadow-[0_4px_10px_rgba(0,0,0,0.3)] group-hover/uploader:border-agy-cyan/40 group-hover/uploader:text-agy-cyan transition-all duration-300">
+                      <UploadCloud className="w-6 h-6 text-text-muted group-hover/uploader:text-agy-cyan group-hover/uploader:scale-110 transition-all duration-300" />
                     </div>
-                    <span className="text-xs font-semibold text-text-main group-hover:text-white">Drag & drop validation manifest</span>
+                    <span className="text-xs font-semibold text-text-main group-hover/uploader:text-white transition-colors">Drag & drop validation manifest</span>
                     <span className="text-[10px] font-mono text-text-muted uppercase">Accepts .json / .jsonl structures</span>
                     <div className="mt-2.5 px-3 py-1 bg-bg-dark border border-slate-800/50 rounded text-[9px] font-mono text-agy-cyan hover:border-agy-cyan/40 hover:bg-agy-cyan/5 transition-all">
                       CHOOSE FILE
@@ -453,7 +613,11 @@ export default function ProblemsPage() {
                     exit={{ opacity: 0 }}
                     className="flex flex-col items-center justify-center gap-3.5"
                   >
-                    <Activity className="w-8 h-8 text-agy-cyan animate-spin" />
+                    <div className="relative flex items-center justify-center w-16 h-16 mb-1">
+                      <div className="absolute inset-0 rounded-full border border-agy-cyan/15 animate-pulse" />
+                      <div className="absolute inset-2 rounded-full border border-dashed border-agy-cyan/30 animate-pulse" />
+                      <UploadCloud className="w-6 h-6 text-agy-cyan animate-pulse" />
+                    </div>
                     <span className="text-xs font-mono text-text-muted uppercase tracking-wider">{uploadMessage}</span>
                   </motion.div>
                 )}
@@ -466,14 +630,16 @@ export default function ProblemsPage() {
                     exit={{ scale: 0.9, opacity: 0 }}
                     className="flex flex-col items-center justify-center gap-3"
                   >
-                    <div className="w-12 h-12 rounded-full border border-agy-green/20 bg-agy-green/5 flex items-center justify-center shadow-[0_0_15px_rgba(0,255,102,0.15)]">
-                      <CheckCircle className="w-6 h-6 text-text-green" />
+                    <div className="relative flex items-center justify-center w-16 h-16 mb-1">
+                      <div className="absolute inset-0 rounded-full bg-agy-green/10 border border-agy-green/30 animate-pulse" />
+                      <div className="absolute -inset-1 rounded-full border border-dashed border-agy-green/25 animate-pulse" />
+                      <CheckCircle className="w-7 h-7 text-text-green filter drop-shadow-[0_0_8px_rgba(0,255,102,0.4)]" />
                     </div>
                     <span className="text-xs font-mono text-text-green font-bold uppercase tracking-wider">STRUCTURE VERIFIED</span>
                     <span className="text-[10px] font-mono text-text-muted max-w-[200px] leading-relaxed">{uploadMessage}</span>
                     <button
                       onClick={() => setUploadStatus("idle")}
-                      className="mt-2 text-[9px] font-mono border border-slate-800 hover:border-slate-700 hover:bg-bg-panel px-3 py-1 rounded cursor-pointer"
+                      className="mt-2 text-[9px] font-mono border border-slate-800 hover:border-slate-700 hover:bg-bg-panel px-3 py-1 rounded cursor-pointer transition-all hover:text-white"
                     >
                       RESET UPLOADER
                     </button>
@@ -488,14 +654,16 @@ export default function ProblemsPage() {
                     exit={{ scale: 0.9, opacity: 0 }}
                     className="flex flex-col items-center justify-center gap-3"
                   >
-                    <div className="w-12 h-12 rounded-full border border-text-red/20 bg-text-red/5 flex items-center justify-center shadow-[0_0_15px_rgba(239,68,68,0.15)]">
-                      <AlertCircle className="w-6 h-6 text-text-red" />
+                    <div className="relative flex items-center justify-center w-16 h-16 mb-1">
+                      <div className="absolute inset-0 rounded-full bg-text-red/10 border border-text-red/30 animate-pulse" />
+                      <div className="absolute -inset-1 rounded-full border border-dashed border-text-red/25 animate-pulse" />
+                      <AlertCircle className="w-7 h-7 text-text-red filter drop-shadow-[0_0_8px_rgba(239,68,68,0.4)]" />
                     </div>
                     <span className="text-xs font-mono text-text-red font-bold uppercase tracking-wider">COMPILE REJECTED</span>
                     <span className="text-[10px] font-mono text-text-muted max-w-[200px] leading-relaxed">{uploadMessage}</span>
                     <button
                       onClick={() => setUploadStatus("idle")}
-                      className="mt-2 text-[9px] font-mono border border-slate-800 hover:border-slate-700 hover:bg-bg-panel px-3 py-1 rounded cursor-pointer"
+                      className="mt-2 text-[9px] font-mono border border-slate-800 hover:border-slate-750 hover:bg-bg-panel px-3 py-1 rounded cursor-pointer transition-all hover:text-white"
                     >
                       RETRY UPLOAD
                     </button>
