@@ -389,6 +389,105 @@ function WorkspaceCockpit() {
   // Keep track of directory expansion state for the File Tree Sidebar
   const [expandedDirs, setExpandedDirs] = useState<Record<string, boolean>>({});
 
+  // Resizable Sizing States
+  const [leftWidth, setLeftWidth] = useState(60); // % for left panel (IDE/Terminal split)
+  const [editorHeight, setEditorHeight] = useState(35); // % for files editor height
+  const [sidebarWidth, setSidebarWidth] = useState(208); // px for file explorer sidebar
+  const [isDesktop, setIsDesktop] = useState(false);
+  const [activeDrag, setActiveDrag] = useState<"leftRight" | "editorTerminal" | "sidebar" | null>(null);
+
+  // Refs for resizing calculations
+  const containerRef = useRef<HTMLDivElement>(null);
+  const leftPanelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mediaQuery = window.matchMedia("(min-width: 1024px)");
+    setIsDesktop(mediaQuery.matches);
+    const handler = (e: MediaQueryListEvent) => setIsDesktop(e.matches);
+    mediaQuery.addEventListener("change", handler);
+    return () => mediaQuery.removeEventListener("change", handler);
+  }, []);
+
+  // Drag to resize left/right panels
+  const handleLeftRightResize = (e: React.PointerEvent<HTMLDivElement>) => {
+    const handleElement = e.currentTarget;
+    handleElement.setPointerCapture(e.pointerId);
+    setActiveDrag("leftRight");
+    const startX = e.clientX;
+    const startWidth = leftWidth;
+    const containerWidth = containerRef.current?.getBoundingClientRect().width || window.innerWidth;
+
+    const onPointerMove = (moveEvent: PointerEvent) => {
+      const deltaX = moveEvent.clientX - startX;
+      const deltaPercentage = (deltaX / containerWidth) * 100;
+      const newWidth = Math.max(30, Math.min(80, startWidth + deltaPercentage));
+      setLeftWidth(newWidth);
+    };
+
+    const onPointerUp = (upEvent: PointerEvent) => {
+      handleElement.releasePointerCapture(upEvent.pointerId);
+      setActiveDrag(null);
+      handleElement.removeEventListener("pointermove", onPointerMove);
+      handleElement.removeEventListener("pointerup", onPointerUp);
+    };
+
+    handleElement.addEventListener("pointermove", onPointerMove);
+    handleElement.addEventListener("pointerup", onPointerUp);
+  };
+
+  // Drag to resize editor / terminal vertically
+  const handleEditorTerminalResize = (e: React.PointerEvent<HTMLDivElement>) => {
+    const handleElement = e.currentTarget;
+    handleElement.setPointerCapture(e.pointerId);
+    setActiveDrag("editorTerminal");
+    const startY = e.clientY;
+    const startHeight = editorHeight;
+    const containerHeight = leftPanelRef.current?.getBoundingClientRect().height || window.innerHeight;
+
+    const onPointerMove = (moveEvent: PointerEvent) => {
+      const deltaY = moveEvent.clientY - startY;
+      const deltaPercentage = (deltaY / containerHeight) * 100;
+      const newHeight = Math.max(20, Math.min(80, startHeight + deltaPercentage));
+      setEditorHeight(newHeight);
+    };
+
+    const onPointerUp = (upEvent: PointerEvent) => {
+      handleElement.releasePointerCapture(upEvent.pointerId);
+      setActiveDrag(null);
+      handleElement.removeEventListener("pointermove", onPointerMove);
+      handleElement.removeEventListener("pointerup", onPointerUp);
+    };
+
+    handleElement.addEventListener("pointermove", onPointerMove);
+    handleElement.addEventListener("pointerup", onPointerUp);
+  };
+
+  // Drag to resize file tree sidebar horizontally
+  const handleSidebarResize = (e: React.PointerEvent<HTMLDivElement>) => {
+    const handleElement = e.currentTarget;
+    handleElement.setPointerCapture(e.pointerId);
+    setActiveDrag("sidebar");
+    const startX = e.clientX;
+    const startWidth = sidebarWidth;
+
+    const onPointerMove = (moveEvent: PointerEvent) => {
+      const deltaX = moveEvent.clientX - startX;
+      const newWidth = Math.max(120, Math.min(400, startWidth + deltaX));
+      setSidebarWidth(newWidth);
+    };
+
+    const onPointerUp = (upEvent: PointerEvent) => {
+      handleElement.releasePointerCapture(upEvent.pointerId);
+      setActiveDrag(null);
+      handleElement.removeEventListener("pointermove", onPointerMove);
+      handleElement.removeEventListener("pointerup", onPointerUp);
+    };
+
+    handleElement.addEventListener("pointermove", onPointerMove);
+    handleElement.addEventListener("pointerup", onPointerUp);
+  };
+
   const handleScroll = () => {
     if (textareaRef.current) {
       const scrollTop = textareaRef.current.scrollTop;
@@ -1066,7 +1165,7 @@ function WorkspaceCockpit() {
   };
 
   return (
-    <div className="min-h-screen bg-bg-dark text-white flex flex-col h-screen overflow-hidden">
+    <div className={`min-h-screen bg-bg-dark text-white flex flex-col h-screen overflow-hidden ${activeDrag ? "select-none cursor-" + (activeDrag === "editorTerminal" ? "row-resize" : "col-resize") : ""}`}>
       {/* Laser Top Overlay scanlines */}
       <div className="absolute inset-0 bg-scanlines opacity-[0.02] pointer-events-none" />
 
@@ -1130,13 +1229,13 @@ function WorkspaceCockpit() {
       </header>
 
       {/* Main Split Grid */}
-      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden min-h-0 relative">
+      <div ref={containerRef} className="flex-1 flex flex-col lg:flex-row overflow-hidden min-h-0 relative">
 
         {/* Left Side: IDE & Terminal (60% width) */}
-        <div className="w-full lg:w-[60%] h-[55%] lg:h-full border-b lg:border-b-0 lg:border-r border-slate-800/80 flex flex-col overflow-hidden">
+        <div ref={leftPanelRef} style={{ width: isDesktop ? `${leftWidth}%` : undefined }} className="w-full h-[55%] lg:h-full border-b lg:border-b-0 flex flex-col overflow-hidden">
 
           {/* Active Physical IDE (Top Panel 35% height) */}
-          <div className="h-[35%] flex flex-col border-b border-slate-800/80 bg-bg-dark/40 overflow-hidden shrink-0">
+          <div style={{ height: `${editorHeight}%` }} className="flex flex-col bg-bg-dark/40 overflow-hidden shrink-0">
             {/* File explorer tabs */}
             <div className="h-9 border-b border-slate-800/80 bg-bg-panel/40 flex items-center gap-2 px-3 sm:px-4 text-xs font-mono text-text-muted shrink-0 overflow-x-auto overflow-y-hidden">
               <div className="hidden sm:flex items-center gap-1 shrink-0">
@@ -1174,13 +1273,23 @@ function WorkspaceCockpit() {
             <div className="flex-1 flex overflow-hidden">
               
               {/* Hierarchical vertical files explorer sidebar */}
-              <div className="w-52 shrink-0 border-r border-slate-800/80 bg-bg-panel/10 flex flex-col h-full overflow-hidden select-none">
+              <div style={{ width: `${sidebarWidth}px` }} className="shrink-0 bg-bg-panel/10 flex flex-col h-full overflow-hidden select-none">
                 <div className="h-8 border-b border-slate-800/80 bg-bg-panel/20 flex items-center px-3 font-mono text-[10px] text-text-muted shrink-0 uppercase tracking-widest font-bold">
                   <span>Files Explorer</span>
                 </div>
                 <div className="flex-1 overflow-auto p-2 scrollbar-thin scrollbar-thumb-slate-800/50">
                   {renderFileTree(buildFileTree(Object.keys(files)))}
                 </div>
+              </div>
+
+              {/* Drag-to-resize handle for Sidebar explorer */}
+              <div
+                onPointerDown={handleSidebarResize}
+                className="w-[3px] bg-slate-800 hover:bg-agy-cyan/80 cursor-col-resize transition-colors relative z-40 group select-none shrink-0 flex items-center justify-center"
+                title="Drag to resize explorer"
+              >
+                <div className="absolute inset-y-0 -left-[6px] -right-[6px] bg-transparent group-hover:bg-agy-cyan/5 blur-sm pointer-events-none" />
+                <div className="w-[1px] h-6 bg-slate-700 group-hover:bg-agy-cyan/50" />
               </div>
 
               {/* Main overlapping editor canvas */}
@@ -1231,8 +1340,18 @@ function WorkspaceCockpit() {
             </div>
           </div>
 
+          {/* Drag-to-resize handle for Editor/Terminal splits */}
+          <div
+            onPointerDown={handleEditorTerminalResize}
+            className="h-[3px] bg-slate-800 hover:bg-agy-green/80 cursor-row-resize transition-colors relative z-40 group select-none shrink-0 flex items-center justify-center"
+            title="Drag to resize editor & terminal"
+          >
+            <div className="absolute inset-x-0 -top-[6px] -bottom-[6px] bg-transparent group-hover:bg-agy-green/5 blur-sm pointer-events-none" />
+            <div className="h-[1px] w-6 bg-slate-700 group-hover:bg-agy-green/50" />
+          </div>
+
           {/* Physically Working Terminal CLI Console (Bottom Panel 65% height) */}
-          <div className="h-[65%] flex flex-col bg-bg-dark overflow-hidden flex-1">
+          <div className="flex flex-col bg-bg-dark overflow-hidden flex-1 min-h-0">
             <div className="h-8 border-b border-slate-800/80 bg-bg-panel/30 flex items-center px-4 justify-between font-mono text-[10px] text-text-muted shrink-0">
               <span className="flex items-center gap-1.5">
                 <TerminalIcon className="w-3.5 h-3.5 text-agy-cyan animate-pulse" />
@@ -1288,8 +1407,20 @@ function WorkspaceCockpit() {
 
         </div>
 
+        {/* Drag-to-resize handle for Left/Right panels */}
+        {isDesktop && (
+          <div
+            onPointerDown={handleLeftRightResize}
+            className="hidden lg:flex w-[3px] bg-slate-800 hover:bg-agy-cyan/80 cursor-col-resize transition-colors relative z-40 group select-none shrink-0 items-center justify-center"
+            title="Drag to resize panels"
+          >
+            <div className="absolute inset-y-0 -left-[6px] -right-[6px] bg-transparent group-hover:bg-agy-cyan/5 blur-sm pointer-events-none" />
+            <div className="w-[1px] h-6 bg-slate-700 group-hover:bg-agy-cyan/50" />
+          </div>
+        )}
+
         {/* Right Side: Telemetry Metrics & Participant Panel (40% width) */}
-        <div className="w-full lg:w-[40%] h-[45%] lg:h-full bg-bg-panel/25 flex flex-col overflow-hidden">
+        <div style={{ width: isDesktop ? `${100 - leftWidth}%` : undefined }} className="w-full h-[45%] lg:h-full bg-bg-panel/25 flex flex-col overflow-hidden">
 
           {/* Participant Presence HUD / Mocked WebRTC Presence Dashboard */}
           <div className="p-5 border-b border-slate-800/80 bg-bg-panel/50 space-y-4 shrink-0">
