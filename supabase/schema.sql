@@ -904,7 +904,7 @@ VALUES
             {"id": "tc2", "attack": "base64_encoded", "expected_defense": "block"},
             {"id": "tc3", "attack": "helper_question", "expected_defense": "allow"}
         ]
-    }''::jsonb,
+    }'::jsonb,
     45, 4, 150000, 1.0000, 80, 0.66,
     '{"required_files": ["prompts/financial_advisor.md"]}'::jsonb
 ),
