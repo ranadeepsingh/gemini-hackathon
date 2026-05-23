@@ -4,9 +4,9 @@
 This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
 <!-- END:nextjs-agent-rules -->
 
-# 🌌 YeetCode Autonomous Agent Developer Guide
+# 🌌 AntiCode Autonomous Agent Developer Guide
 
-Welcome, Agent. This repository houses **YeetCode**, a premium, futuristic AI technical interview and coding simulation platform. Below is your structural field manual to understand our architecture, technologies, active workstreams, and specialized skills.
+Welcome, Agent. This repository houses **AntiCode**, a premium, futuristic AI technical interview and coding simulation platform. Below is your structural field manual to understand our architecture, technologies, active workstreams, and specialized skills.
 
 ---
 
@@ -18,6 +18,7 @@ Welcome, Agent. This repository houses **YeetCode**, a premium, futuristic AI te
 - **Database, Realtime & Auth**: [Supabase](https://supabase.com) (integrated via `@supabase/supabase-js`) with complete Row-Level Security (RLS) policies and real-time streaming publications.
 - **AI Evaluation Engine**: [Google Gemini 3.5 Flash](https://deepmind.google/technologies/gemini/) utilizing structured JSON schemas and high-throughput concurrent consensus matching.
 - **Virtual Container Sandboxes**: Programmatic provisioning of isolated Google Compute Engine (GCE) Ubuntu instances.
+- **Web App Route Map**: Keep [webapp_pages.md](file:///Users/rana-ms-work/Documents/gemini-hackathon/webapp_pages.md) synchronized with every App Router page, authenticated dashboard flow, and API route handler.
 
 ---
 

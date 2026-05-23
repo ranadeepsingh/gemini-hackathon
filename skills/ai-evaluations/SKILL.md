@@ -3,7 +3,7 @@ name: ai-evaluations
 description: Guidelines for AI code evaluations, the Gemini 3.5 Best-of-3 consensus engine, scoring metrics, and database schemas.
 ---
 
-# YeetCode AI Interview Evaluations
+# AntiCode AI Interview Evaluations
 
 This skill governs the code grading pipeline, which connects directly to the Google Gemini Developer API to provide high-fidelity scorecards of candidate interview submissions.
 

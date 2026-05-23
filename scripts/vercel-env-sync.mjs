@@ -17,7 +17,7 @@ const colors = {
 
 console.log(`
 ${colors.magenta}${colors.bright}======================================================
-  🌌  Y E E T C O D E   E N V   S Y N C H R O N I Z E R (⚡)
+  🌌  A N T I C O D E   E N V   S Y N C H R O N I Z E R (⚡)
 ======================================================${colors.reset}
 `);
 

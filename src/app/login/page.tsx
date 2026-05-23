@@ -1,13 +1,11 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   ShieldAlert, 
   Terminal, 
-  Cpu, 
   KeyRound, 
   Mail, 
   ArrowRight, 
@@ -17,6 +15,7 @@ import {
   Zap,
   User
 } from "lucide-react";
+import AuthAwareHomeLink from "@/components/AuthAwareHomeLink";
 import { supabase } from "@/lib/supabase/client";
 
 export default function LoginPage() {
@@ -57,7 +56,7 @@ export default function LoginPage() {
         const { error } = await supabase.auth.signInWithOtp({
           email,
           options: {
-            emailRedirectTo: `${window.location.origin}/problems`,
+            emailRedirectTo: `${window.location.origin}/dashboard`,
           },
         });
         if (error) throw error;
@@ -71,7 +70,7 @@ export default function LoginPage() {
           password,
         });
         if (error) throw error;
-        router.push("/problems");
+        router.push("/dashboard");
       } else {
         // Sign Up Flow with custom profile metadata
         const { data, error } = await supabase.auth.signUp({
@@ -83,7 +82,7 @@ export default function LoginPage() {
               username: username || email.split("@")[0],
               role: role,
             },
-            emailRedirectTo: `${window.location.origin}/problems`,
+            emailRedirectTo: `${window.location.origin}/dashboard`,
           },
         });
         if (error) throw error;
@@ -94,7 +93,7 @@ export default function LoginPage() {
             text: "Secure node registered! Transferring telemetry logs...",
           });
           setTimeout(() => {
-            router.push("/problems");
+            router.push("/dashboard");
           }, 1500);
         } else {
           setMessage({
@@ -146,7 +145,7 @@ export default function LoginPage() {
       <div className="relative w-full max-w-[500px]">
         {/* Glow Header */}
         <div className="flex flex-col items-center mb-8 text-center">
-          <Link href="/" aria-label="AntiCode home" className="rounded-xl">
+          <AuthAwareHomeLink ariaLabel="AntiCode home or dashboard" className="rounded-xl">
             <motion.div 
               initial={{ scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
@@ -156,7 +155,7 @@ export default function LoginPage() {
               <div className="absolute inset-0 bg-gradient-to-br from-agy-green/10 to-transparent" />
               <img src="/assets/anticode_logo.svg" className="w-12 h-12 object-contain" alt="AntiCode Logo" />
             </motion.div>
-          </Link>
+          </AuthAwareHomeLink>
           <motion.h1 
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
@@ -306,7 +305,7 @@ export default function LoginPage() {
                         }`}
                       >
                         <Zap className="w-3.5 h-3.5" />
-                        <span>CANDIDATE</span>
+                        <span>CANDIDATE ROLE</span>
                       </button>
                       <button
                         type="button"
@@ -318,7 +317,7 @@ export default function LoginPage() {
                         }`}
                       >
                         <Database className="w-3.5 h-3.5" />
-                        <span>INTERVIEWER</span>
+                        <span>INTERVIEWER ROLE</span>
                       </button>
                     </div>
                   </div>
@@ -439,7 +438,7 @@ export default function LoginPage() {
               className="group py-2.5 px-3 rounded-xl border border-slate-800 hover:border-agy-cyan/40 bg-bg-dark/40 hover:bg-agy-cyan/5 transition-all duration-300 font-mono text-xs text-text-muted hover:text-agy-cyan flex flex-col items-center gap-1.5 cursor-pointer"
             >
               <Zap className="w-4 h-4 text-text-muted group-hover:text-agy-cyan" />
-              <span>USER VIEW</span>
+              <span>CANDIDATE VIEW</span>
             </button>
             <button
               type="button"
@@ -448,7 +447,7 @@ export default function LoginPage() {
               className="group py-2.5 px-3 rounded-xl border border-slate-800 hover:border-agy-violet/40 bg-bg-dark/40 hover:bg-agy-violet/5 transition-all duration-300 font-mono text-xs text-text-muted hover:text-agy-violet flex flex-col items-center gap-1.5 cursor-pointer"
             >
               <Database className="w-4 h-4 text-text-muted group-hover:text-agy-violet" />
-              <span>INTERVIEWER</span>
+              <span>INTERVIEWER VIEW</span>
             </button>
           </div>
         </motion.div>

@@ -3,9 +3,9 @@ name: vercel-integration
 description: Guidelines for Vercel project setups, the Vercel API SDK, token structures, and automatic deployment pipeline scripts.
 ---
 
-# YeetCode Vercel Integration & Deployment
+# AntiCode Vercel Integration & Deployment
 
-This skill governs the automated and programmatic delivery of the YeetCode platform to Vercel's edge hosting environment using the official `@vercel/sdk`.
+This skill governs the automated and programmatic delivery of the AntiCode platform to Vercel's edge hosting environment using the official `@vercel/sdk`.
 
 ## 1. Automated Setup Script (`scripts/vercel-setup.mjs`)
 The platform includes an automated deployment manager in [scripts/vercel-setup.mjs](file:///Users/rana-ms-work/Documents/gemini-hackathon/scripts/vercel-setup.mjs). This node script performs these primary operations:
