@@ -67,7 +67,7 @@ type StarterState = "solved" | "empty_ai_fill" | "partial_scaffold";
 
 const STARTER_STATE_BY_SLUG: Record<string, StarterState> = {
   "agentic-matrix-optimizer": "solved",
-  "skill-log-parser": "solved",
+  "skill-log-parser": "partial_scaffold",
   "agentic-anomaly-detector": "solved",
   "prompt-adversarial-defense": "empty_ai_fill",
   "agentic-dependency-resolver": "empty_ai_fill",
@@ -120,7 +120,7 @@ const LOCAL_FALLBACK_PROBLEMS: Problem[] = [
     id: "00000000-0000-0000-0000-000000000002",
     title: "AI Skill Writing: Custom Log Parser Skill",
     slug: "skill-log-parser",
-    description: "### Goal\nReview a demo-ready Google Antigravity Skill (`log_parser`) that parses logs dynamically.\n\n### Starter State\n`SKILL.md` and `parse.py` are pre-seeded with Apache and JSON parsing so the demo can validate the run-tests path immediately.\n\n### Backstory\nAntigravity agents need the capability to analyze system event logs without leaving their agent sandbox. This skill accepts log lines, applies pattern heuristics, and outputs structured analytical breakdowns.\n\n### Task\n1. Inspect `skills/log_parser/SKILL.md` and `skills/log_parser/scripts/parse.py`.\n2. Use the agy terminal to verify standard Apache and JSON logs parse correctly.\n3. If you edit it, preserve malformed input and binary block safety fallbacks.\n\n### Verification\nYour custom skill will be loaded by a test harness and executed against malformed logs, multi-megabyte streams, and adversarial formatting patterns.",
+    description: "### Goal\nConstruct a declarative Antigravity Skill (`log_parser`) that parses system logs dynamically.\n\n### Starter State\n`SKILL.md` contains basic declaration headers, and `parse.py` contains a minimal stub returning `{}` out of the box. You must implement the full log-parsing logic.\n\n### Backstory\nAntigravity agents need the capability to analyze system event logs without leaving their agent sandbox. This skill accepts log lines, applies pattern heuristics, and outputs structured analytical breakdowns.\n\n### Task\n1. Author detailed instructions and usage patterns in `skills/log_parser/SKILL.md`.\n2. Complete `skills/log_parser/scripts/parse.py` to parse Combined Apache log format or structured JSON lines.\n3. Return precise fields like `ip`, `time`, `method`, `path`, `request`, `status`, and `size` with graceful fallback handling.\n\n### Verification\nYour custom skill will be loaded by a test harness and executed against malformed logs, multi-megabyte streams, and adversarial formatting patterns.",
     difficulty: "hard",
     category: "skill_verification",
     starter_code: "# YAML Frontmatter\n---\nname: log-parser\ndescription: Parse Apache, Nginx, or structured JSON application logs\n---\n\n# Instructions\nUse this skill to extract errors, warnings, and load patterns...",
@@ -138,7 +138,7 @@ const LOCAL_FALLBACK_PROBLEMS: Problem[] = [
     passing_score_threshold: 75,
     passing_tests_ratio: 1.00,
     passing_criteria: {"required_files": ["SKILL.md", "scripts/parse.py"]},
-    metadata: {"starter_state": "solved", "starter_files": ["skills/log_parser/SKILL.md", "skills/log_parser/scripts/parse.py"]},
+    metadata: {"starter_state": "partial_scaffold", "starter_files": ["skills/log_parser/SKILL.md", "skills/log_parser/scripts/parse.py"]},
     created_at: new Date().toISOString()
   },
   {

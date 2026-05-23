@@ -875,7 +875,7 @@ VALUES
     'skill_verification',
     'AI Skill Writing: Custom Log Parser Skill',
     'skill-log-parser',
-    '### Goal\nReview a demo-ready Google Antigravity Skill (`log_parser`) that parses logs dynamically.\n\n### Starter State\n`SKILL.md` and `parse.py` are pre-seeded with Apache and JSON parsing so the demo can validate the run-tests path immediately.\n\n### Backstory\nAntigravity agents need the capability to analyze system event logs without leaving their agent sandbox. This skill accepts log lines, applies pattern heuristics, and outputs structured analytical breakdowns.\n\n### Task\n1. Inspect `skills/log_parser/SKILL.md` and `skills/log_parser/scripts/parse.py`.\n2. Use the agy terminal to verify standard Apache and JSON logs parse correctly.\n3. If you edit it, preserve malformed input and binary block safety fallbacks.\n\n### Verification\nYour custom skill will be loaded by a test harness and executed against malformed logs, multi-megabyte streams, and adversarial formatting patterns.',
+    '### Goal\nConstruct a declarative Antigravity Skill (`log_parser`) that parses system logs dynamically.\n\n### Starter State\n`SKILL.md` contains basic declaration headers, and `parse.py` contains a minimal stub returning `{}` out of the box. You must implement the full log-parsing logic.\n\n### Backstory\nAntigravity agents need the capability to analyze system event logs without leaving their agent sandbox. This skill accepts log lines, applies pattern heuristics, and outputs structured analytical breakdowns.\n\n### Task\n1. Author detailed instructions and usage patterns in `skills/log_parser/SKILL.md`.\n2. Complete `skills/log_parser/scripts/parse.py` to parse Combined Apache log format or structured JSON lines.\n3. Return precise fields like `ip`, `time`, `method`, `path`, `request`, `status`, and `size` with graceful fallback handling.\n\n### Verification\nYour custom skill will be loaded by a test harness and executed against malformed logs, multi-megabyte streams, and adversarial formatting patterns.',
     'hard',
     'skill_verification',
     '# YAML Frontmatter\n---\nname: log-parser\ndescription: Parse Apache, Nginx, or structured JSON application logs\n---\n\n# Instructions\nUse this skill to extract errors, warnings, and load patterns...',
@@ -1053,7 +1053,7 @@ SET category_id = EXCLUDED.category_id, title = EXCLUDED.title, description = EX
 UPDATE public.problems
 SET metadata = CASE slug
     WHEN 'agentic-matrix-optimizer' THEN '{"starter_state": "solved", "starter_files": ["matrix_processor.py"]}'::jsonb
-    WHEN 'skill-log-parser' THEN '{"starter_state": "solved", "starter_files": ["skills/log_parser/SKILL.md", "skills/log_parser/scripts/parse.py"]}'::jsonb
+    WHEN 'skill-log-parser' THEN '{"starter_state": "partial_scaffold", "starter_files": ["skills/log_parser/SKILL.md", "skills/log_parser/scripts/parse.py"]}'::jsonb
     WHEN 'prompt-adversarial-defense' THEN '{"starter_state": "empty_ai_fill", "starter_files": ["prompts/financial_advisor.md"]}'::jsonb
     WHEN 'agentic-dependency-resolver' THEN '{"starter_state": "empty_ai_fill", "starter_files": ["resolver.py"]}'::jsonb
     WHEN 'agentic-anomaly-detector' THEN '{"starter_state": "solved", "starter_files": ["healer.py"]}'::jsonb
