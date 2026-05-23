@@ -1514,6 +1514,37 @@ function WorkspaceCockpit() {
         setTotalTokens(finalInputTokens + finalOutputTokens);
         setTotalCost(finalCostUsd);
 
+        // Add problem to local storage solved list if passing
+        if (gradeReport.is_passing) {
+          const PROBLEM_SLUG_TO_UUID: Record<string, string> = {
+            "agentic-matrix-optimizer": "00000000-0000-0000-0000-000000000001",
+            "skill-log-parser": "00000000-0000-0000-0000-000000000002",
+            "prompt-adversarial-defense": "00000000-0000-0000-0000-000000000003",
+            "agentic-dependency-resolver": "00000000-0000-0000-0000-000000000004",
+            "agentic-anomaly-detector": "00000000-0000-0000-0000-000000000005",
+            "skill-k8s-debugger": "00000000-0000-0000-0000-000000000006",
+            "skill-db-migrator": "00000000-0000-0000-0000-000000000007",
+            "prompt-pydantic-guard": "00000000-0000-0000-0000-000000000008",
+            "prompt-data-leak-shield": "00000000-0000-0000-0000-000000000009",
+            "python-backend-io-service": "00000000-0000-0000-0000-000000000010"
+          };
+          const problemId = PROBLEM_SLUG_TO_UUID[problemSlug];
+          if (problemId && typeof window !== "undefined") {
+            try {
+              const demoSolved = localStorage.getItem("demo_solved_problems");
+              const currentSolved = demoSolved ? JSON.parse(demoSolved) : [];
+              if (Array.isArray(currentSolved)) {
+                if (!currentSolved.includes(problemId)) {
+                  currentSolved.push(problemId);
+                  localStorage.setItem("demo_solved_problems", JSON.stringify(currentSolved));
+                }
+              }
+            } catch (e) {
+              console.warn("Could not save solved status to localstorage:", e);
+            }
+          }
+        }
+
         router.push(`/reports/demo-report-id?problem=${problemSlug}&grade=${encodedGradeReport}`);
         return;
       }

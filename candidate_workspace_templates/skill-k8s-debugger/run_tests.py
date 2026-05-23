@@ -14,5 +14,22 @@ class TestK8sTriageSkill(unittest.TestCase):
         with self.assertRaises(PermissionError):
             triage_pod_state("Connection refused", action="delete_node")
 
+    def test_empty_logs_handled_safely(self):
+        res = triage_pod_state("")
+        self.assertTrue("UNKNOWN_CRASH" in res, f"Empty logs should return unknown crash, got: {res}")
+
+    def test_none_logs_handled_safely(self):
+        res = triage_pod_state(None)
+        self.assertTrue("UNKNOWN_CRASH" in res, f"None logs should return unknown crash, got: {res}")
+
+    def test_skill_markdown_conformance(self):
+        skill_path = "skills/k8s_triage/SKILL.md"
+        self.assertTrue(os.path.exists(skill_path), "skills/k8s_triage/SKILL.md must exist!")
+        with open(skill_path, "r", encoding="utf-8") as f:
+            content = f.read()
+        self.assertIn("name:", content, "Frontmatter must define a name.")
+        self.assertIn("description:", content, "Frontmatter must define a description.")
+        self.assertIn("k8s_triage", content, "Frontmatter name must include k8s_triage.")
+
 if __name__ == "__main__":
     unittest.main()

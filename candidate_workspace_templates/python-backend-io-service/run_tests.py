@@ -2,7 +2,6 @@ import importlib
 import json
 import unittest
 
-
 def require_function(testcase, name):
     try:
         module = importlib.import_module("app")
@@ -11,7 +10,6 @@ def require_function(testcase, name):
     function = getattr(module, name, None)
     testcase.assertTrue(callable(function), f"app.py must define callable {name}().")
     return function
-
 
 class TestPythonBackendIOService(unittest.TestCase):
     def test_calculates_weighted_score(self):
@@ -51,6 +49,19 @@ class TestPythonBackendIOService(unittest.TestCase):
         self.assertEqual(handle_request("GET", "/score", "{}")[0], 405)
         self.assertEqual(handle_request("POST", "/unknown", "{}")[0], 404)
 
+    def test_default_threshold_conformance(self):
+        calculate_score = require_function(self, "calculate_score")
+        # Asserts score threshold defaults to 0.75 when omitted in calculating check or handling requests
+        payload = {"inputs": [0.8, 0.8, 0.8], "weights": [1, 1, 1]} # score = 0.8, default threshold = 0.75 -> passed
+        handle_request = require_function(self, "handle_request")
+        status, response = handle_request(
+            "POST",
+            "/score",
+            json.dumps({"inputs": [0.8, 0.8, 0.8], "weights": [1, 1, 1]}), # threshold omitted
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(response["score"], 0.8)
+        self.assertTrue(response["passed"])
 
 if __name__ == "__main__":
     unittest.main()

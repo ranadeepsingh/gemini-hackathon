@@ -439,25 +439,140 @@ Add a detailed summary_review (approx 3 sentences) in a professional, constructi
  */
 function generateFallbackMockGrade(slug: string, rubrics: EvaluatorRubric[], testPassed?: number, testTotal?: number): GradeResult {
   const rubricScores: RubricScore[] = [];
-  let scoreSum = 0;
+  const total = testTotal || 5;
+  const passed = testPassed !== undefined ? testPassed : 0;
+  const passedRatio = total > 0 ? passed / total : 0;
 
+  const sandboxDir = path.resolve(process.cwd(), "candidate_workspace", slug);
+
+  // 1. Compute prompt size for prompt challenges
+  let promptLength = 0;
+  const promptsDir = path.join(sandboxDir, "prompts");
+  if (fs.existsSync(promptsDir)) {
+    try {
+      const files = fs.readdirSync(promptsDir);
+      for (const file of files) {
+        if (file.endsWith(".md")) {
+          const content = fs.readFileSync(path.join(promptsDir, file), "utf-8");
+          promptLength += content.trim().length;
+        }
+      }
+    } catch (e) {
+      console.error("Error reading prompts dir for grading:", e);
+    }
+  }
+
+  // 2. Compute SKILL.md Frontmatter configuration for skill challenges
+  let isSkillConfigured = false;
+  const skillsDir = path.join(sandboxDir, "skills");
+  if (fs.existsSync(skillsDir)) {
+    try {
+      const findSkillMd = (dir: string): string | null => {
+        const files = fs.readdirSync(dir);
+        for (const file of files) {
+          const fullPath = path.join(dir, file);
+          if (fs.statSync(fullPath).isDirectory()) {
+            const nested = findSkillMd(fullPath);
+            if (nested) return nested;
+          } else if (file === "SKILL.md") {
+            return fullPath;
+          }
+        }
+        return null;
+      };
+      const skillPath = findSkillMd(skillsDir);
+      if (skillPath) {
+        const content = fs.readFileSync(skillPath, "utf-8");
+        if (content.includes("name:") && content.includes("description:") &&
+            !content.includes("unconfigured") && !content.includes("Starter")) {
+          isSkillConfigured = true;
+        }
+      }
+    } catch (e) {
+      console.error("Error reading SKILL.md for grading:", e);
+    }
+  }
+  // 3. Check for transcript events for agentic challenges
+  let hasTranscriptEvents = false;
+  const transcriptPath = path.join(sandboxDir, ".antigravity", "transcript.jsonl");
+  if (fs.existsSync(transcriptPath)) {
+    try {
+      const content = fs.readFileSync(transcriptPath, "utf-8").trim();
+      if (content.length > 10) {
+        hasTranscriptEvents = true;
+      }
+    } catch (e) {
+      console.error("Error reading transcript for grading:", e);
+    }
+  }
+
+  // 4. Calculate Metric 3: Optimization & Sweet spots
+  let metric3Score = 80;
+  let metric3Feedback = "";
+  if (slug.startsWith("prompt-")) {
+    if (promptLength > 100 && promptLength < 2500) {
+      metric3Score = Math.round(88 + passedRatio * 12);
+      metric3Feedback = `Ideal prompt size of ${promptLength} characters. Demonstrates high-fidelity token efficiency with clear clinical/financial boundary rules.`;
+    } else if (promptLength === 0) {
+      metric3Score = Math.round(35 + passedRatio * 35);
+      metric3Feedback = `Warning: Prompt definition file was empty or missing. Defaulting to baseline LLM instruction.`;
+    } else {
+      metric3Score = Math.round(70 + passedRatio * 15);
+      metric3Feedback = `Prompt size of ${promptLength} characters is slightly bloated or verbose, introducing minor processing latency.`;
+    }
+  } else if (slug.startsWith("skill-")) {
+    if (isSkillConfigured) {
+      metric3Score = Math.round(90 + passedRatio * 10);
+      metric3Feedback = `Declarative SKILL.md is perfectly configured. YAML frontmatter successfully defines the metadata schemas and target run commands.`;
+    } else {
+      metric3Score = Math.round(45 + passedRatio * 30);
+      metric3Feedback = `SKILL.md remains unconfigured or contains the starter template stub. Update frontmatter metadata to solve this challenge.`;
+    }
+  } else {
+    // Agentic flow / matrix optimizer / backend-io
+    if (hasTranscriptEvents) {
+      metric3Score = Math.round(88 + passedRatio * 12);
+      metric3Feedback = `Chronological transcript timeline logs confirm candidates utilized the Antigravity CLI/SDK agentic prompts to guide code changes.`;
+    } else {
+      metric3Score = Math.round(55 + passedRatio * 25);
+      metric3Feedback = `Limited agentic pipeline interaction. Candidate made direct file edits instead of orchestrating via CLI agent prompt triggers.`;
+    }
+  }
+
+  let scoreSum = 0;
   rubrics.forEach((rubric, idx) => {
-    // Highly realistic, distinct marks
-    const baseScore = slug.includes("matrix") ? [95, 90, 88, 92] : [92, 98, 90, 95];
-    const score = baseScore[idx % baseScore.length] || 90;
+    let score = 80;
+    let feedback = "";
+    if (idx === 0) {
+      score = Math.round(passedRatio * 100);
+      if (score === 100) {
+        feedback = `Passed all ${passed}/${total} hidden unit tests. Complete functional correctness achieved.`;
+      } else if (score > 0) {
+        feedback = `Partial correctness. Passed ${passed}/${total} hidden unit tests. Some behavioral edge-cases are failing.`;
+      } else {
+        feedback = `Passed 0/${total} unit tests. Baseline functional requirements are not met.`;
+      }
+    } else if (idx === 1) {
+      score = Math.round(55 + passedRatio * 45);
+      feedback = `Strong exception safety, input sanitation, and robust boundary control verified under testing pressure.`;
+    } else if (idx === 2) {
+      score = metric3Score;
+      feedback = metric3Feedback;
+    } else {
+      score = Math.round(78 + passedRatio * 22);
+      feedback = `Good collaboration trace. Descriptive system queries and logical command execution sequences.`;
+    }
 
     rubricScores.push({
       metric_key: rubric.metric_key,
       score,
-      feedback: `Successfully demonstrated top tier standards for ${rubric.metric_label}. Aligned with robust, secure coding, and container-level sandbox specifications.`
+      feedback
     });
     scoreSum += score * rubric.weight;
   });
 
   const score_aggregate = Math.round(scoreSum);
-  const summary_review = slug.includes("matrix")
-    ? "Strong demo-ready fix. The agent removed the artificial matrix latency while preserving the np.matmul contract, keeping the patch small and easy to review. Further optimization is unnecessary for this challenge scope."
-    : "Sensational prompt engineering defense! The pre-processing validator successfully recognized adversarial jailbreak vectors and rejected the payloads. The output sanitization rules successfully blocked all leakage of administrative credentials.";
+  const summary_review = generateSummaryReview(slug, score_aggregate, passed, total);
 
   return {
     score_agentic_flow: rubricScores[0]?.score || score_aggregate,
@@ -466,8 +581,18 @@ function generateFallbackMockGrade(slug: string, rubrics: EvaluatorRubric[], tes
     score_aggregate,
     summary_review,
     rubric_scores: rubricScores,
-    test_cases_passed: testPassed,
-    test_cases_total: testTotal,
-    is_passing: testPassed !== undefined && testTotal !== undefined ? testPassed === testTotal : (score_aggregate >= 70)
+    test_cases_passed: passed,
+    test_cases_total: total,
+    is_passing: passed === total
   };
+}
+
+function generateSummaryReview(slug: string, score: number, passed: number, total: number): string {
+  if (score >= 90) {
+    return `Sensational submission for ${slug}! Implementation passed all ${passed}/${total} hidden unit tests and demonstrates production-grade security, optimization, and documentation standards. Highly analytical reasoning trace.`;
+  } else if (score >= 70) {
+    return `Solid effort on ${slug}. Passed ${passed}/${total} hidden unit tests. The implementation behaves correctly in most test cases, but minor architectural issues, prompt size overhead, or missing metadata declarations prevent a premium score.`;
+  } else {
+    return `Incomplete submission for ${slug}. Passed only ${passed}/${total} unit tests. Key functional constraints are missing, or files like prompts or SKILL.md remain empty/unconfigured. Please review specifications and retry.`;
+  }
 }

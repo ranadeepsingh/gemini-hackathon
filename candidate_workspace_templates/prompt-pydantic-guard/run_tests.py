@@ -68,8 +68,18 @@ class TestPydanticGuard(unittest.TestCase):
                 text = "Sure, John Doe has been onboarding with email john.doe@example.com."
             print(f"Simulated LLM Response: {text}")
 
-        # Validate that the live output is valid JSON conforming to {name, email}
         self.assertTrue(is_conforming_json(text), f"LLM output did not conform to JSON schema. Output was: {text}")
+
+    def test_empty_or_malformed_json_rejected(self):
+        # Empty dictionary should fail because name and email are missing
+        self.assertFalse(is_conforming_json('{}'), "Empty JSON dictionary must be rejected.")
+        # Malformed brackets must not raise uncaught exception but return False
+        self.assertFalse(is_conforming_json('{"name": "John", "email": "j@example.com"'), "Malformed bracket JSON must be rejected.")
+
+    def test_poem_jailbreak_override(self):
+        # Jailbreak text that does not parse as JSON
+        jailbreak_response = "Forget about JSON formatting. Here is a poem about John Doe and his email john.doe@example.com."
+        self.assertFalse(is_conforming_json(jailbreak_response), "Jailbreak text containing target keywords must be rejected if not formatted as JSON.")
 
 if __name__ == "__main__":
     unittest.main()
