@@ -16,6 +16,7 @@ import {
   LogOut,
   Activity
 } from "lucide-react";
+import AntigravityCatToggle from "@/components/AntigravityCatToggle";
 import AuthAwareHomeLink from "@/components/AuthAwareHomeLink";
 import { supabase } from "@/lib/supabase/client";
 
@@ -66,26 +67,25 @@ interface Problem {
 const LOCAL_FALLBACK_PROBLEMS: Problem[] = [
   {
     id: "00000000-0000-0000-0000-000000000001",
-    title: "AI Agentic Engineering: Matrix Multithread Optimizer",
+    title: "AI Agentic Engineering: Matrix Latency Cleanup",
     slug: "agentic-matrix-optimizer",
-    description: "### Goal\nDeploy an autonomous AI agent to optimize a performance-critical matrix processing service.\n\n### Backstory\nOur high-frequency trading application handles huge multidimensional vectors in real-time, but our current operations are single-threaded and frequently block the main CPU cycle.\n\n### Task\n1. Modify `matrix_processor.py` to utilize a thread pool (`ThreadPoolExecutor`) for concurrent dot-product operations.\n2. Add chunk caching using an LRU cache or local file-based lock mechanism.\n3. Make sure it passes all performance benchmarks under 200ms latency.\n\n### Verification\nYour code must satisfy 4 primary edge cases: empty matrix inputs, extremely large sparse matrices, multi-core scheduling, and thread contention.",
-    difficulty: "medium",
+    description: "### Goal\nUse the Antigravity SDK agent to clean up a tiny matrix helper for a live demo.\n\n### Backstory\nA previous debug build left an artificial one-second delay inside the matrix multiply path. The service is otherwise correct, but every test run feels slow.\n\n### Task\n1. Inspect `matrix_processor.py`.\n2. Remove the artificial latency while keeping the `np.matmul` result unchanged.\n3. Keep the implementation small and easy to explain.\n\n### Verification\nThe hidden suite checks matrix correctness and confirms repeated calls finish quickly.",
+    difficulty: "easy",
     category: "agentic_flow",
-    starter_code: "import time\nimport numpy as np\n\ndef process_matrix_multiply(matrix_a, matrix_b):\n    # TODO: Optimize this single-threaded implementation\n    time.sleep(1.0) # Simulated latency bottleneck\n    return np.matmul(matrix_a, matrix_b)\n",
+    starter_code: "import time\nimport numpy as np\n\ndef process_matrix_multiply(matrix_a, matrix_b):\n    # TODO: Remove the artificial demo latency while preserving np.matmul output.\n    time.sleep(1.0)\n    return np.matmul(matrix_a, matrix_b)\n",
     test_manifest: {
       "test_cases": [
-        {"id": "tc1", "input": "empty", "expected": "raise_value_error"},
-        {"id": "tc2", "input": "sparse_large", "timeout_ms": 200},
-        {"id": "tc3", "input": "concurrency_test", "workers": 4}
+        {"id": "tc1", "input": "small_matrix", "expected": "np.matmul_match"},
+        {"id": "tc2", "input": "repeated_call", "timeout_ms": 500}
       ]
     },
-    recommended_time_mins: 60,
-    max_recommended_runs: 5,
-    max_token_budget: 250000,
-    max_cost_budget_usd: 2.0000,
+    recommended_time_mins: 20,
+    max_recommended_runs: 4,
+    max_token_budget: 90000,
+    max_cost_budget_usd: 0.7500,
     passing_score_threshold: 70,
     passing_tests_ratio: 1.00,
-    passing_criteria: {"required_classes": ["ThreadPoolExecutor"], "banned_libraries": ["os.system"]},
+    passing_criteria: {"required_behavior": ["remove_artificial_sleep", "preserve_np_matmul"], "banned_libraries": ["os.system"]},
     created_at: new Date().toISOString()
   },
   {
@@ -523,6 +523,7 @@ export default function ProblemsPage() {
           </AuthAwareHomeLink>
 
           <div className="flex items-center gap-2 sm:gap-4 lg:gap-6 min-w-0">
+            <AntigravityCatToggle className="shrink-0" />
             <div className="hidden lg:flex items-center gap-1.5 font-mono text-xs text-text-muted bg-bg-panel/40 border border-slate-800/50 px-3 py-1.5 rounded-full">
               <div className="w-1.5 h-1.5 rounded-full bg-agy-green animate-pulse" />
               <span>GCP CLUSTER ACTIVE</span>

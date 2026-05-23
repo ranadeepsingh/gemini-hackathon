@@ -24,6 +24,7 @@ import {
   Trophy,
   Zap,
 } from "lucide-react";
+import AntigravityCatToggle from "@/components/AntigravityCatToggle";
 import AuthAwareHomeLink from "@/components/AuthAwareHomeLink";
 import { supabase } from "@/lib/supabase/client";
 
@@ -47,6 +48,56 @@ async function withClientTimeout<T>(
     ]);
   } finally {
     if (timeoutId) clearTimeout(timeoutId);
+  }
+}
+
+function getObjectStringValue(record: Record<string, unknown>, key: string) {
+  const value = record[key];
+  return typeof value === "string" && value.trim().length > 0 ? value : null;
+}
+
+function getDashboardErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (typeof error === "string" && error.trim().length > 0) return error;
+
+  if (error && typeof error === "object") {
+    const record = error as Record<string, unknown>;
+    const message = getObjectStringValue(record, "message");
+    const details = getObjectStringValue(record, "details");
+    const hint = getObjectStringValue(record, "hint");
+    const code = getObjectStringValue(record, "code");
+    const parts = [
+      message,
+      details ? `Details: ${details}` : null,
+      hint ? `Hint: ${hint}` : null,
+      code ? `Code: ${code}` : null,
+    ].filter(Boolean);
+
+    if (parts.length > 0) return parts.join(" ");
+
+    try {
+      const serialized = JSON.stringify(error);
+      if (serialized && serialized !== "{}") return serialized;
+    } catch {
+      // Fall through to a stable user-facing fallback below.
+    }
+  }
+
+  return "An unknown dashboard sync error occurred.";
+}
+
+function throwDashboardSyncError(label: string, error: unknown): never {
+  throw new Error(`${label}: ${getDashboardErrorMessage(error)}`);
+}
+
+async function recordDashboardActivity(operation: PromiseLike<{ error: unknown | null }>) {
+  try {
+    const result = await withClientTimeout(operation, "Supabase activity write");
+    if (result.error) {
+      console.warn("Could not record dashboard login activity", getDashboardErrorMessage(result.error), result.error);
+    }
+  } catch (err) {
+    console.warn("Could not record dashboard login activity", getDashboardErrorMessage(err), err);
   }
 }
 
@@ -216,7 +267,7 @@ export default function DashboardPage() {
         setUser(authUser);
 
         const today = getTodayDateKey();
-        const activityWrite = supabase.rpc("record_user_login_day");
+        const activityWrite = recordDashboardActivity(supabase.rpc("record_user_login_day"));
         const profileQuery = supabase
           .from("profiles")
           .select("full_name, username, role")
@@ -284,19 +335,18 @@ export default function DashboardPage() {
           .order("created_at", { ascending: false })
           .limit(50);
 
-        const [activityWriteResult, profileResult, dailyResult, activityResult, sessionsResult] = await Promise.all([
-          withClientTimeout(activityWrite, "Supabase activity write"),
+        const [, profileResult, dailyResult, activityResult, sessionsResult] = await Promise.all([
+          activityWrite,
           withClientTimeout(profileQuery, "Supabase profile lookup"),
           withClientTimeout(dailyQuery, "Supabase daily challenge lookup"),
           withClientTimeout(activityQuery, "Supabase activity lookup"),
           withClientTimeout(sessionsQuery, "Supabase session lookup"),
         ]);
 
-        if (activityWriteResult.error) throw activityWriteResult.error;
-        if (profileResult.error) throw profileResult.error;
-        if (dailyResult.error) throw dailyResult.error;
-        if (activityResult.error) throw activityResult.error;
-        if (sessionsResult.error) throw sessionsResult.error;
+        if (profileResult.error) throwDashboardSyncError("Profile lookup failed", profileResult.error);
+        if (dailyResult.error) throwDashboardSyncError("Daily challenge lookup failed", dailyResult.error);
+        if (activityResult.error) throwDashboardSyncError("Activity lookup failed", activityResult.error);
+        if (sessionsResult.error) throwDashboardSyncError("Session lookup failed", sessionsResult.error);
 
         setProfile(profileResult.data ?? null);
         setDailyChallenge({
@@ -320,15 +370,14 @@ export default function DashboardPage() {
             "Supabase scorecard lookup"
           );
 
-          if (reportsResult.error) throw reportsResult.error;
+          if (reportsResult.error) throwDashboardSyncError("Scorecard lookup failed", reportsResult.error);
           setReports((reportsResult.data ?? []) as EvaluationReport[]);
         } else {
           setReports([]);
         }
       } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
         console.warn("Could not load dashboard data from Supabase", err);
-        setErrorMessage(message);
+        setErrorMessage(getDashboardErrorMessage(err));
       } finally {
         setLoading(false);
       }
@@ -421,11 +470,10 @@ export default function DashboardPage() {
         "Supabase daily session creation"
       );
 
-      if (error) throw error;
+      if (error) throwDashboardSyncError("Daily session creation failed", error);
       router.push(`/workspace?problem=${dailyChallenge.problem.slug}&session=${data.id}`);
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      setErrorMessage(message);
+      setErrorMessage(getDashboardErrorMessage(err));
     } finally {
       setStartingDaily(false);
     }
@@ -501,6 +549,7 @@ export default function DashboardPage() {
           </AuthAwareHomeLink>
 
           <div className="flex items-center gap-2 sm:gap-4">
+            <AntigravityCatToggle className="shrink-0" />
             <Link
               href="/problems"
               className="hidden sm:flex items-center gap-1.5 font-mono text-xs text-text-muted hover:text-agy-cyan transition-colors"

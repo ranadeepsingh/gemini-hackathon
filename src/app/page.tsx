@@ -24,6 +24,7 @@ import {
   CircleDollarSign,
   Activity
 } from "lucide-react";
+import AntigravityCatToggle from "@/components/AntigravityCatToggle";
 import AuthAwareHomeLink from "@/components/AuthAwareHomeLink";
 import MouseSpotlight from "@/components/MouseSpotlight";
 
@@ -128,6 +129,7 @@ export default function Home() {
             </span>
           </AuthAwareHomeLink>
           <div className="flex items-center gap-4">
+            <AntigravityCatToggle />
             <span className="hidden sm:flex items-center gap-2 text-xs font-mono text-text-muted bg-bg-panel/60 px-3 py-1.5 rounded-full border border-border-subtle">
               <span className="w-2 h-2 rounded-full bg-agy-green animate-ping" />
               GCP WEST1: ACTIVE
@@ -325,7 +327,7 @@ export default function Home() {
                       <div className="border-t border-border-subtle/50 pt-4 mt-4 bg-bg-panel/20 p-3 rounded-lg border border-border-subtle/40">
                         <div className="text-[9px] uppercase tracking-wider text-text-muted font-bold mb-1">TECHNICAL JUDGE REVIEW</div>
                         <p className="text-[11px] leading-relaxed text-text-main italic">
-                          "Defensive system instructions in <span className="text-agy-cyan font-mono font-semibold">clinical_notes.md</span> successfully neutralized roleplay bypass attacks. SSN and HIPAA leak vectors were blocked cleanly via regex pre-filters."
+                          &quot;Defensive system instructions in <span className="text-agy-cyan font-mono font-semibold">clinical_notes.md</span> successfully neutralized roleplay bypass attacks. SSN and HIPAA leak vectors were blocked cleanly via regex pre-filters.&quot;
                         </p>
                       </div>
                     </motion.div>
@@ -389,7 +391,7 @@ export default function Home() {
                       <div className="border-t border-border-subtle/50 pt-4 mt-4 bg-bg-panel/20 p-3 rounded-lg border border-border-subtle/40">
                         <div className="text-[9px] uppercase tracking-wider text-text-muted font-bold mb-1">AGENCY CONCORDANCE REPORT</div>
                         <p className="text-[11px] leading-relaxed text-text-main italic">
-                          "Candidate directed the Antigravity agent to implement localized locking and concurrent dot-products. Resolvers successfully resolved semver conflicts within 3 loops."
+                          &quot;Candidate directed the Antigravity agent to implement localized locking and concurrent dot-products. Resolvers successfully resolved semver conflicts within 3 loops.&quot;
                         </p>
                       </div>
                     </motion.div>

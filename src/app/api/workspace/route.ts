@@ -9,10 +9,10 @@ const HIDDEN_TEST_FILES = new Set(["run_tests.py", "validator.py"]);
 
 const CHALLENGE_DESCRIPTIONS: Record<string, { title: string; category: string; difficulty: string; content: string }> = {
   "agentic-matrix-optimizer": {
-    title: "AI Agentic Engineering: Matrix Multithread Optimizer",
+    title: "AI Agentic Engineering: Matrix Latency Cleanup",
     category: "Agentic Flow",
-    difficulty: "Medium",
-    content: `### Goal\nDeploy an autonomous AI agent to optimize a performance-critical matrix processing service.\n\n### Backstory\nOur high-frequency trading application handles huge multidimensional vectors in real-time, but our current operations are single-threaded and frequently block the main CPU cycle.\n\n### Task\n1. Modify \`matrix_processor.py\` to utilize a thread pool (\`ThreadPoolExecutor\`) for concurrent dot-product operations.\n2. Add chunk caching using an LRU cache or local file-based lock mechanism.\n3. Make sure it passes all performance benchmarks under 200ms latency.\n\n### Verification\nYour code must satisfy 4 primary edge cases: empty matrix inputs, extremely large sparse matrices, multi-core scheduling, and thread contention.`
+    difficulty: "Easy",
+    content: `### Goal\nUse the Antigravity SDK agent to clean up a tiny matrix helper for a live demo.\n\n### Backstory\nA previous debug build left an artificial one-second delay inside the matrix multiply path. The service is otherwise correct, but every test run feels slow.\n\n### Task\n1. Inspect \`matrix_processor.py\`.\n2. Remove the artificial latency while keeping the \`np.matmul\` result unchanged.\n3. Keep the implementation small and easy to explain.\n\n### Verification\nThe hidden suite checks matrix correctness and confirms repeated calls finish quickly.`
   },
   "skill-log-parser": {
     title: "AI Skill Writing: Custom Log Parser Skill",
@@ -200,8 +200,9 @@ export async function GET(req: NextRequest) {
 
     // Physically write challenge.md to the sandboxed candidate workspace if it doesn't exist
     const challengeMdPath = path.join(sandboxDir, "challenge.md");
-    if (!fs.existsSync(challengeMdPath) || reset) {
-      fs.writeFileSync(challengeMdPath, generateChallengeMd(problemSlug), "utf-8");
+    const generatedChallengeMd = generateChallengeMd(problemSlug);
+    if (!fs.existsSync(challengeMdPath) || reset || fs.readFileSync(challengeMdPath, "utf-8") !== generatedChallengeMd) {
+      fs.writeFileSync(challengeMdPath, generatedChallengeMd, "utf-8");
     }
 
     const files = readFilesRecursively(sandboxDir);

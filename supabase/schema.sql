@@ -855,21 +855,20 @@ VALUES
 (
     '00000000-0000-0000-0000-000000000001',
     'agentic_flow',
-    'AI Agentic Engineering: Matrix Multithread Optimizer',
+    'AI Agentic Engineering: Matrix Latency Cleanup',
     'agentic-matrix-optimizer',
-    '### Goal\nDeploy an autonomous AI agent to optimize a performance-critical matrix processing service.\n\n### Backstory\nOur high-frequency trading application handles huge multidimensional vectors in real-time, but our current operations are single-threaded and frequently block the main CPU cycle.\n\n### Task\n1. Modify `matrix_processor.py` to utilize a thread pool (`ThreadPoolExecutor`) for concurrent dot-product operations.\n2. Add chunk caching using an LRU cache or local file-based lock mechanism.\n3. Make sure it passes all performance benchmarks under 200ms latency.\n\n### Verification\nYour code must satisfy 4 primary edge cases: empty matrix inputs, extremely large sparse matrices, multi-core scheduling, and thread contention.',
-    'medium',
+    '### Goal\nUse the Antigravity SDK agent to clean up a tiny matrix helper for a live demo.\n\n### Backstory\nA previous debug build left an artificial one-second delay inside the matrix multiply path. The service is otherwise correct, but every test run feels slow.\n\n### Task\n1. Inspect `matrix_processor.py`.\n2. Remove the artificial latency while keeping the `np.matmul` result unchanged.\n3. Keep the implementation small and easy to explain.\n\n### Verification\nThe hidden suite checks matrix correctness and confirms repeated calls finish quickly.',
+    'easy',
     'agentic_flow',
-    'import time\nimport numpy as np\n\ndef process_matrix_multiply(matrix_a, matrix_b):\n    # TODO: Optimize this single-threaded implementation\n    time.sleep(1.0) # Simulated latency bottleneck\n    return np.matmul(matrix_a, matrix_b)\n',
+    'import time\nimport numpy as np\n\ndef process_matrix_multiply(matrix_a, matrix_b):\n    # TODO: Remove the artificial demo latency while preserving np.matmul output.\n    time.sleep(1.0)\n    return np.matmul(matrix_a, matrix_b)\n',
     '{
         "test_cases": [
-            {"id": "tc1", "input": "empty", "expected": "raise_value_error"},
-            {"id": "tc2", "input": "sparse_large", "timeout_ms": 200},
-            {"id": "tc3", "input": "concurrency_test", "workers": 4}
+            {"id": "tc1", "input": "small_matrix", "expected": "np.matmul_match"},
+            {"id": "tc2", "input": "repeated_call", "timeout_ms": 500}
         ]
     }'::jsonb,
-    60, 5, 250000, 2.0000, 70, 1.00,
-    '{"required_classes": ["ThreadPoolExecutor"], "banned_libraries": ["os.system"]}'::jsonb
+    20, 4, 90000, 0.7500, 70, 1.00,
+    '{"required_behavior": ["remove_artificial_sleep", "preserve_np_matmul"], "banned_libraries": ["os.system"]}'::jsonb
 ),
 (
     '00000000-0000-0000-0000-000000000002',
@@ -1063,11 +1062,11 @@ SET problem_id = EXCLUDED.problem_id,
     updated_at = NOW();
 
 -- Seed Dynamic Rubrics
--- 1. Matrix Optimizer
+-- 1. Matrix Latency Cleanup
 INSERT INTO public.challenge_rubrics (problem_id, metric_key, metric_label, evaluation_type, weight, description) VALUES
-('00000000-0000-0000-0000-000000000001', 'unit_test_correctness', 'Unit Test Correctness', 'objective_test', 0.35, 'Deterministic proportion of structural multi-core test cases passed successfully.'),
-('00000000-0000-0000-0000-000000000001', 'concurrency_safety', 'Concurrency Safety Audit', 'objective_static', 0.25, 'AST verification that thread pool executor is imported, spawned, and mapped without locks deadlock.'),
-('00000000-0000-0000-0000-000000000001', 'loop_efficiency', 'Loop Performance & Cache Control', 'subjective_llm', 0.25, 'Gemini consensus evaluation of multi-dimensional matrix partitioning, lock safety and chunk caching pools.'),
+('00000000-0000-0000-0000-000000000001', 'unit_test_correctness', 'Latency Cleanup', 'objective_test', 0.40, 'Checks that the artificial sleep is removed and repeated calls complete quickly.'),
+('00000000-0000-0000-0000-000000000001', 'concurrency_safety', 'Matrix Output Integrity', 'objective_static', 0.25, 'Verifies the implementation still returns the same result as np.matmul.'),
+('00000000-0000-0000-0000-000000000001', 'loop_efficiency', 'Minimal Edit Discipline', 'subjective_llm', 0.20, 'Reviews whether the solution stays small, readable, and demo-friendly.'),
 ('00000000-0000-0000-0000-000000000001', 'collaboration_communication', 'Interviewer Collaboration', 'subjective_interviewer', 0.15, 'Evaluator review of candidate communications, reasoning trace descriptions, and agility during injected sandbox stress tests.')
 ON CONFLICT (problem_id, metric_key) DO UPDATE
 SET metric_label = EXCLUDED.metric_label, evaluation_type = EXCLUDED.evaluation_type, weight = EXCLUDED.weight, description = EXCLUDED.description;

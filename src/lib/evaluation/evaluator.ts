@@ -50,9 +50,9 @@ const GEMINI_JUDGE_MODEL = process.env.GEMINI_JUDGE_MODEL || "gemini-3.5-flash";
 // Safe offline fallback rubrics for the pre-seeded problems
 const FALLBACK_CHALLENGE_RUBRICS: Record<string, EvaluatorRubric[]> = {
   "agentic-matrix-optimizer": [
-    { metric_key: "unit_test_correctness", metric_label: "Unit Test Correctness", weight: 0.35, description: "Deterministic proportion of structural multi-core test cases passed successfully." },
-    { metric_key: "concurrency_safety", metric_label: "Concurrency Safety Audit", weight: 0.25, description: "AST verification that thread pool executor is imported, spawned, and mapped without locks deadlock." },
-    { metric_key: "loop_efficiency", metric_label: "Loop Performance & Cache Control", weight: 0.25, description: "Gemini consensus evaluation of multi-dimensional matrix partitioning, lock safety and chunk caching pools." },
+    { metric_key: "unit_test_correctness", metric_label: "Latency Cleanup", weight: 0.40, description: "Checks that the artificial sleep is removed and repeated calls complete quickly." },
+    { metric_key: "concurrency_safety", metric_label: "Matrix Output Integrity", weight: 0.25, description: "Verifies the implementation still returns the same result as np.matmul." },
+    { metric_key: "loop_efficiency", metric_label: "Minimal Edit Discipline", weight: 0.20, description: "Reviews whether the solution stays small, readable, and demo-friendly." },
     { metric_key: "collaboration_communication", metric_label: "Interviewer Collaboration", weight: 0.15, description: "Evaluator review of candidate communications, reasoning trace descriptions, and agility during injected sandbox stress tests." }
   ],
   "python-backend-io-service": [
@@ -325,7 +325,7 @@ function generateFallbackMockGrade(slug: string, rubrics: EvaluatorRubric[]): Gr
 
   const score_aggregate = Math.round(scoreSum);
   const summary_review = slug.includes("matrix")
-    ? "Outstanding performance! The agentic code successfully integrated the concurrent ThreadPoolExecutor and optimized matrix multiplication down to 48ms. Implementation of localized lock caching successfully demonstrated deep concurrency mastery. Minor optimization is possible regarding LRU cleanups."
+    ? "Strong demo-ready fix. The agent removed the artificial matrix latency while preserving the np.matmul contract, keeping the patch small and easy to review. Further optimization is unnecessary for this challenge scope."
     : "Sensational prompt engineering defense! The pre-processing validator successfully recognized adversarial jailbreak vectors and rejected the payloads. The output sanitization rules successfully blocked all leakage of administrative credentials.";
 
   return {

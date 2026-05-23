@@ -135,3 +135,154 @@ label[for]:focus-visible {
 .moving-scan {
   animation: scanning 8s linear infinite;
 }
+
+/* Upside-down navbar cat for the antigravity gag */
+.anti-gravity-cat-layer {
+  z-index: 10;
+}
+
+.anti-gravity-cat-track {
+  position: absolute;
+  top: 10px;
+  left: -86px;
+  width: 76px;
+  height: 42px;
+  filter: drop-shadow(0 0 10px rgba(0, 240, 255, 0.35));
+  transform-origin: center;
+  will-change: left, transform;
+}
+
+.anti-gravity-cat {
+  position: relative;
+  width: 76px;
+  height: 42px;
+  transform: rotate(180deg);
+  transform-origin: center;
+}
+
+.anti-gravity-cat__body,
+.anti-gravity-cat__head,
+.anti-gravity-cat__paw {
+  background: linear-gradient(135deg, #172033 0%, #05080f 100%);
+  border: 1px solid rgba(0, 240, 255, 0.55);
+}
+
+.anti-gravity-cat__body {
+  position: absolute;
+  left: 20px;
+  top: 13px;
+  width: 38px;
+  height: 20px;
+  border-radius: 999px 999px 850px 850px;
+  box-shadow: inset 0 0 12px rgba(0, 240, 255, 0.12), 0 0 10px rgba(0, 255, 102, 0.12);
+}
+
+.anti-gravity-cat__head {
+  position: absolute;
+  right: 4px;
+  top: 8px;
+  width: 25px;
+  height: 23px;
+  border-radius: 45% 45% 48% 48%;
+}
+
+.anti-gravity-cat__head::before,
+.anti-gravity-cat__head::after {
+  content: "";
+  position: absolute;
+  top: -7px;
+  width: 10px;
+  height: 10px;
+  background: #111827;
+  border-top: 1px solid rgba(0, 240, 255, 0.65);
+  border-left: 1px solid rgba(0, 240, 255, 0.65);
+  transform: rotate(45deg);
+}
+
+.anti-gravity-cat__head::before {
+  left: 2px;
+}
+
+.anti-gravity-cat__head::after {
+  right: 2px;
+}
+
+.anti-gravity-cat__eye {
+  position: absolute;
+  top: 9px;
+  width: 4px;
+  height: 4px;
+  border-radius: 999px;
+  background: #00ff66;
+  box-shadow: 0 0 8px rgba(0, 255, 102, 0.85);
+}
+
+.anti-gravity-cat__eye--left {
+  left: 7px;
+}
+
+.anti-gravity-cat__eye--right {
+  right: 7px;
+}
+
+.anti-gravity-cat__tail {
+  position: absolute;
+  left: 4px;
+  top: 9px;
+  width: 24px;
+  height: 23px;
+  border-top: 4px solid rgba(0, 240, 255, 0.78);
+  border-left: 4px solid rgba(0, 240, 255, 0.78);
+  border-radius: 18px 0 0 0;
+  transform: rotate(-18deg);
+  transform-origin: right bottom;
+  animation: anti-gravity-tail-flick 2.6s ease-in-out infinite alternate;
+}
+
+.anti-gravity-cat__paw {
+  position: absolute;
+  top: 30px;
+  width: 7px;
+  height: 10px;
+  border-radius: 999px;
+  animation: anti-gravity-paw-step 1.8s ease-in-out infinite alternate;
+}
+
+.anti-gravity-cat__paw--front {
+  right: 18px;
+}
+
+.anti-gravity-cat__paw--back {
+  left: 30px;
+  animation-delay: 0.22s;
+}
+
+@keyframes anti-gravity-paw-step {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(4px);
+  }
+}
+
+@keyframes anti-gravity-tail-flick {
+  from {
+    transform: rotate(-18deg);
+  }
+  to {
+    transform: rotate(-3deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .anti-gravity-cat__tail,
+  .anti-gravity-cat__paw {
+    animation: none;
+  }
+
+  .anti-gravity-cat-track {
+    left: 50%;
+    transform: translateX(-50%);
+  }
+}

@@ -56,7 +56,7 @@ erDiagram
     problems {
         uuid id PK
         varchar category_id FK "REFERENCES categories.id"
-        text title "e.g. Matrix Multithread Optimizer"
+        text title "e.g. Matrix Latency Cleanup"
         text slug "UNIQUE url segment"
         text description "Markdown challenge backstory + task requirements"
         text difficulty "CHECK: easy, medium, hard"
@@ -78,7 +78,7 @@ erDiagram
         uuid id PK
         uuid problem_id FK "ON DELETE CASCADE"
         text metric_key "e.g. loop_efficiency"
-        text metric_label "e.g. Concurrency Loop Efficiency"
+        text metric_label "e.g. Latency Cleanup"
         text evaluation_type "CHECK: objective_test, objective_static, subjective_llm, subjective_interviewer"
         numeric weight "Rubric weight (0.01 to 1.00)"
         text description "Instruction text for the evaluation"

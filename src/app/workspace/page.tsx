@@ -1,11 +1,10 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Terminal as TerminalIcon,
-  Play,
   RefreshCw,
   CheckCircle2,
   AlertTriangle,
@@ -22,10 +21,11 @@ import {
   FileCode,
   CheckCircle,
   Database,
+  Lock,
   X
 } from "lucide-react";
 import Link from "next/link";
-import AuthAwareHomeLink from "@/components/AuthAwareHomeLink";
+import AntigravityCatToggle from "@/components/AntigravityCatToggle";
 import { supabase } from "@/lib/supabase/client";
 
 const SUPABASE_CLIENT_TIMEOUT_MS = 3500;
@@ -65,9 +65,13 @@ function formatWorkspaceSnapshot(files: Record<string, string>): string {
 
 function isAgentCliCommand(command: string): boolean {
   return command === "antigravity run" ||
+    command === "agy run" ||
     command.startsWith("antigravity run ") ||
+    command.startsWith("agy run ") ||
     command.startsWith("antigravity prompt ") ||
+    command.startsWith("agy prompt ") ||
     command.startsWith("antigravity ask ") ||
+    command.startsWith("agy ask ") ||
     command.startsWith("prompt ") ||
     command.startsWith("ask ");
 }
@@ -184,9 +188,9 @@ interface GradeReport {
 // Client-side fallback rubrics for resilient offline capability
 const LOCAL_FALLBACK_RUBRICS: Record<string, WorkspaceRubric[]> = {
   "agentic-matrix-optimizer": [
-    { metric_key: "unit_test_correctness", metric_label: "Unit Test Correctness", weight: 0.35, description: "Deterministic proportion of structural multi-core test cases passed successfully." },
-    { metric_key: "concurrency_safety", metric_label: "Concurrency Safety Audit", weight: 0.25, description: "AST verification that thread pool executor is imported, spawned, and mapped without locks deadlock." },
-    { metric_key: "loop_efficiency", metric_label: "Loop Performance & Cache Control", weight: 0.25, description: "Gemini consensus evaluation of multi-dimensional matrix partitioning, lock safety and chunk caching pools." },
+    { metric_key: "unit_test_correctness", metric_label: "Latency Cleanup", weight: 0.40, description: "Checks that the artificial sleep is removed and repeated calls complete quickly." },
+    { metric_key: "concurrency_safety", metric_label: "Matrix Output Integrity", weight: 0.25, description: "Verifies the implementation still returns the same result as np.matmul." },
+    { metric_key: "loop_efficiency", metric_label: "Minimal Edit Discipline", weight: 0.20, description: "Reviews whether the solution stays small, readable, and demo-friendly." },
     { metric_key: "collaboration_communication", metric_label: "Interviewer Collaboration", weight: 0.15, description: "Evaluator review of candidate communications, reasoning trace descriptions, and agility during injected sandbox stress tests." }
   ],
   "python-backend-io-service": [
@@ -412,6 +416,12 @@ function getHighlighter(content: string, filename: string): string {
   return escapeHtml(content);
 }
 
+function isReadOnlyFile(filePath: string): boolean {
+  if (!filePath) return false;
+  const lower = filePath.toLowerCase();
+  return lower === "challenge.md" || lower.endsWith("/challenge.md");
+}
+
 function WorkspaceCockpit() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -423,6 +433,7 @@ function WorkspaceCockpit() {
   const [openTabs, setOpenTabs] = useState<string[]>([]);
   const [activeTab, setActiveFile] = useState<string>("");
   const [code, setCode] = useState<string>("");
+  const activeTabRef = useRef("");
 
   const [terminalLogs, setTerminalLogs] = useState<string[]>([]);
   const [terminalInput, setTerminalInput] = useState("");
@@ -468,6 +479,10 @@ function WorkspaceCockpit() {
   // Refs for resizing calculations
   const containerRef = useRef<HTMLDivElement>(null);
   const leftPanelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    activeTabRef.current = activeTab;
+  }, [activeTab]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -578,23 +593,32 @@ function WorkspaceCockpit() {
     shouldStickToTerminalBottomRef.current = distanceFromBottom < 96;
   };
 
-  const reconcileWorkspaceFiles = (workspaceData: WorkspaceResponse) => {
+  const reconcileWorkspaceFiles = useCallback((workspaceData: WorkspaceResponse) => {
     const fileKeys = Object.keys(workspaceData.files);
-    const nextActive = activeTab && workspaceData.files[activeTab] !== undefined
-      ? activeTab
+    const currentActive = activeTabRef.current;
+    const nextActive = currentActive && workspaceData.files[currentActive] !== undefined
+      ? currentActive
       : (workspaceData.activeFile || fileKeys[0] || "");
 
     setFiles(workspaceData.files);
     setOpenTabs(prev => {
       const existingTabs = prev.filter(tab => workspaceData.files[tab] !== undefined);
-      const nextTabs = nextActive && !existingTabs.includes(nextActive)
-        ? [nextActive, ...existingTabs]
-        : existingTabs;
-      return nextTabs.length > 0 ? nextTabs : (nextActive ? [nextActive] : []);
+      if (existingTabs.length > 0) {
+        return nextActive && !existingTabs.includes(nextActive)
+          ? [nextActive, ...existingTabs]
+          : existingTabs;
+      }
+      // On initial load, open all visible files sorted with challenge.md first
+      const allFiles = Object.keys(workspaceData.files);
+      return allFiles.sort((a, b) => {
+        if (a === "challenge.md") return -1;
+        if (b === "challenge.md") return 1;
+        return a.localeCompare(b);
+      });
     });
     setActiveFile(nextActive);
     setCode(nextActive ? workspaceData.files[nextActive] || "" : "");
-  };
+  }, []);
 
   // Keep editor scroll alignment when tabs change
   useEffect(() => {
@@ -644,6 +668,7 @@ function WorkspaceCockpit() {
               </div>
             );
           } else {
+            const isReadOnly = isReadOnlyFile(child.path);
             return (
               <button
                 type="button"
@@ -651,12 +676,18 @@ function WorkspaceCockpit() {
                 onClick={() => handleTabChange(child.path)}
                 className={`w-full flex items-center gap-1.5 px-2 py-1 text-left font-mono text-[10px] rounded transition-colors cursor-pointer ${
                   isSelected
-                    ? "bg-agy-green/10 text-agy-green font-bold border-r-2 border-agy-green"
+                    ? isReadOnly
+                      ? "bg-agy-violet/10 text-agy-violet font-bold border-r-2 border-agy-violet"
+                      : "bg-agy-green/10 text-agy-green font-bold border-r-2 border-agy-green"
                     : "text-text-muted/80 hover:text-white hover:bg-slate-800/20"
                 }`}
                 style={{ paddingLeft: `${(depth + 1) * 8}px` }}
               >
-                <FileCode className={`w-3.5 h-3.5 ${isSelected ? "text-agy-green" : "text-text-muted/50"}`} />
+                {isReadOnly ? (
+                  <Lock className={`w-3.5 h-3.5 shrink-0 ${isSelected ? "text-agy-violet animate-pulse" : "text-text-muted/40"}`} />
+                ) : (
+                  <FileCode className={`w-3.5 h-3.5 shrink-0 ${isSelected ? "text-agy-green" : "text-text-muted/50"}`} />
+                )}
                 <span className="truncate">{child.name}</span>
               </button>
             );
@@ -843,7 +874,7 @@ function WorkspaceCockpit() {
     return () => {
       active = false;
     };
-  }, [problemSlug]);
+  }, [problemSlug, reconcileWorkspaceFiles]);
 
   // Debounced auto-save to host filesystem
   useEffect(() => {
@@ -904,7 +935,7 @@ function WorkspaceCockpit() {
     setCode(files[tabName] || "");
   };
 
-  const handleCloseTab = (tabName: string, event: React.MouseEvent<HTMLButtonElement>) => {
+  const handleCloseTab = (tabName: string, event: React.SyntheticEvent<HTMLElement>) => {
     event.stopPropagation();
     if (activeTab && code !== undefined) {
       setFiles(prev => ({ ...prev, [activeTab]: code }));
@@ -1145,15 +1176,23 @@ function WorkspaceCockpit() {
     setHistoryIndex(-1);
 
     if (cmd === "clear") {
-      setTerminalLogs([`agy 🧠 ${terminalCwd ? `(/${terminalCwd})` : "(/)"} >> `]);
+      setTerminalLogs([terminalPrompt(terminalCwd)]);
+      return;
+    }
+
+    if (cmd.startsWith("/")) {
+      setTerminalLogs(prev => appendTerminalLogs(prev, [
+        terminalCommandLine(terminalCwd, cmd),
+        `[system] Unsupported slash command: ${cmd}. Use status, run, prompt, ask, test, or clear.`
+      ], terminalCwd));
       return;
     }
 
     // Define helper list of specific shortcuts
-    const isExplicitTest = cmd === "test" || cmd === "antigravity test" || cmd === "python run_tests.py";
-    const isExplicitRun = cmd === "run" || cmd === "antigravity run";
-    const isExplicitStatus = cmd === "status" || cmd === "antigravity status";
-    const isExplicitCi = cmd === "ci" || cmd === "antigravity ci";
+    const isExplicitTest = cmd === "test" || cmd === "antigravity test" || cmd === "agy test" || cmd === "python run_tests.py";
+    const isExplicitRun = cmd === "run" || cmd === "antigravity run" || cmd === "agy run";
+    const isExplicitStatus = cmd === "status" || cmd === "antigravity status" || cmd === "agy status";
+    const isExplicitCi = cmd === "ci" || cmd === "antigravity ci" || cmd === "agy ci";
 
     if (isExplicitTest) {
       handleRunTests();
@@ -1171,7 +1210,7 @@ function WorkspaceCockpit() {
     }
 
     if (isExplicitCi) {
-      handleExecuteSystemCommand(cmd);
+      handleRunTests();
       return;
     }
 
@@ -1205,12 +1244,6 @@ function WorkspaceCockpit() {
     }
 
     // For any other non-shortcut plain-text inputs, automatically wrap as antigravity prompt "..."
-    setTerminalLogs(prev => [
-      ...prev.slice(0, -1),
-      `agy 🧠 ${terminalCwd ? `(/${terminalCwd})` : "(/)"} >> ${cmd}`,
-      `[system] Conversational instruction detected. Spawning Antigravity Agent...`,
-      `agy 🧠 ${terminalCwd ? `(/${terminalCwd})` : "(/)"} >> `
-    ]);
     const promptCommand = `antigravity prompt "${cmd.replace(/"/g, '\\"')}"`;
     handleDeployAgent(promptCommand);
   };
@@ -1220,11 +1253,9 @@ function WorkspaceCockpit() {
     // Validate rubric weights sum
     const weightSum = rubrics.reduce((acc, r) => acc + r.weight, 0);
     if (Math.abs(weightSum - 1.00) >= 0.001) {
-      setTerminalLogs(prev => [
-        ...prev.slice(0, -1),
+      setTerminalLogs(prev => appendTerminalLogs(prev, [
         `[WARNING] Cannot trigger evaluation: Rubric weights sum to ${(weightSum * 100).toFixed(0)}%, but must equal exactly 100%.`,
-        `agy 🧠 ${terminalCwd ? `(/${terminalCwd})` : "(/)"} >> `
-      ]);
+      ], terminalCwd));
       return;
     }
 
@@ -1232,11 +1263,9 @@ function WorkspaceCockpit() {
     setIsEvaluating(true);
     setCompletionProgress(100);
 
-    setTerminalLogs(prev => [
-      ...prev.slice(0, -1),
+    setTerminalLogs(prev => appendTerminalLogs(prev, [
       `[system] Submitting sandbox code files for Best-of-3 Gemini Consensus evaluation...`,
-      `agy 🧠 ${terminalCwd ? `(/${terminalCwd})` : "(/)"} >> `
-    ]);
+    ], terminalCwd));
 
     try {
       const response = await fetch("/api/evaluate", {
@@ -1359,6 +1388,8 @@ function WorkspaceCockpit() {
           )}
         </div>
 
+        <AntigravityCatToggle className="shrink-0" />
+
         {/* Play/Pause controls */}
         <div className="flex items-center gap-2 sm:gap-3 overflow-x-auto max-w-full w-full md:w-auto pb-1 md:pb-0">
           <Link
@@ -1409,28 +1440,55 @@ function WorkspaceCockpit() {
                 <span className="text-text-muted/60">({problemSlug})</span>
               </div>
               <div className="flex items-center gap-1.5 shrink-0 sm:pl-4">
-                {Object.keys(files).map((filePath) => {
+                {openTabs.filter(filePath => files[filePath] !== undefined).map((filePath) => {
                   const isSelected = activeTab === filePath;
                   const basename = getBasename(filePath);
+                  const isReadOnly = isReadOnlyFile(filePath);
                   return (
-                    <button
-                      type="button"
+                    <div
                       key={filePath}
-                      onClick={() => handleTabChange(filePath)}
-                      aria-pressed={isSelected}
-                      aria-label={`Open file ${filePath}`}
-                      className={`px-3.5 py-1.5 border-r border-l border-slate-800 flex items-center gap-1.5 relative cursor-pointer text-[11px] ${
+                      className={`group h-7 px-3 py-1.5 border-r border-l border-slate-800 flex items-center gap-1.5 relative cursor-pointer text-[11px] ${
                         isSelected ? "bg-bg-dark text-white font-semibold" : "text-text-muted hover:text-white"
                       }`}
                     >
-                      <FileCode className={`w-3 h-3 ${isSelected ? "text-agy-green" : "text-text-muted"}`} />
-                      <span className="truncate max-w-[120px]" title={filePath}>{basename}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleTabChange(filePath)}
+                        aria-pressed={isSelected}
+                        aria-label={`Open file ${filePath}`}
+                        className="flex min-w-0 items-center gap-1.5 text-left"
+                      >
+                        {isReadOnly ? (
+                          <Lock className={`w-3 h-3 shrink-0 ${isSelected ? "text-agy-violet animate-pulse" : "text-text-muted/60"}`} />
+                        ) : (
+                          <FileCode className={`w-3 h-3 shrink-0 ${isSelected ? "text-agy-green" : "text-text-muted"}`} />
+                        )}
+                        <span className="truncate max-w-[120px]" title={filePath}>{basename}</span>
+                      </button>
+                      <button
+                        type="button"
+                        aria-label={`Close file ${filePath}`}
+                        onClick={(event) => handleCloseTab(filePath, event)}
+                        className={`ml-1 grid h-4 w-4 place-items-center rounded border border-transparent transition-colors ${
+                          isSelected
+                            ? "text-text-muted hover:border-slate-700 hover:bg-slate-900 hover:text-white"
+                            : "text-text-muted/60 hover:border-slate-700 hover:bg-slate-900 hover:text-white"
+                        }`}
+                        title="Close tab"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
                       {isSelected && (
-                        <div className="absolute bottom-0 inset-x-0 h-[2px] bg-agy-green" />
+                        <div className={`absolute bottom-0 inset-x-0 h-[2px] ${isReadOnly ? "bg-agy-violet shadow-[0_0_8px_rgba(200,80,255,0.6)]" : "bg-agy-green shadow-[0_0_8px_rgba(0,255,100,0.6)]"}`} />
                       )}
-                    </button>
+                    </div>
                   );
                 })}
+                {openTabs.filter(filePath => files[filePath] !== undefined).length === 0 && (
+                  <span className="px-2 py-1 text-[10px] text-text-muted/60 uppercase tracking-widest">
+                    No file open
+                  </span>
+                )}
               </div>
             </div>
 
@@ -1488,10 +1546,16 @@ function WorkspaceCockpit() {
                     onChange={(e) => setCode(e.target.value)}
                     onScroll={handleScroll}
                     spellCheck="false"
-                    disabled={isRunning || isEvaluating}
+                    disabled={!activeTab || isRunning || isEvaluating}
                     className="absolute inset-0 w-full h-full p-5 m-0 border-0 leading-[21px] font-mono text-xs bg-transparent text-transparent caret-white resize-none overflow-auto outline-none focus:ring-0 focus:outline-none"
                     style={{ tabSize: 4 }}
                   />
+
+                  {!activeTab && (
+                    <div className="absolute inset-0 grid place-items-center bg-bg-dark/50 font-mono text-[10px] uppercase tracking-widest text-text-muted/60">
+                      Select a file from the explorer
+                    </div>
+                  )}
 
                   {isSaving && (
                     <div className="absolute right-4 top-4 font-mono text-[9px] text-agy-green animate-pulse flex items-center gap-1.5 bg-bg-dark/80 px-2 py-1 rounded border border-agy-green/20 z-10">
@@ -1526,13 +1590,17 @@ function WorkspaceCockpit() {
             </div>
 
             {/* Logs Area */}
-            <div className="flex-1 overflow-auto p-4 font-mono text-[11px] leading-relaxed space-y-1.5 select-text">
+            <div
+              ref={terminalViewportRef}
+              onScroll={handleTerminalViewportScroll}
+              className="flex-1 overflow-auto scroll-smooth p-4 font-mono text-[11px] leading-relaxed space-y-1.5 select-text"
+            >
               {terminalLogs.map((log, i) => {
                 const isUserPrompt = log.includes("agy 🧠") && log.includes(">>");
-                const isAgentCall = log.includes("antigravity agent calling") || log.includes("[antigravity agent]");
-                const isAgentThought = log.includes("antigravity agent:");
+                const isAgentCall = log.includes("[antigravity sdk]") || log.includes("antigravity agent calling") || log.includes("[antigravity agent]");
+                const isAgentThought = log.includes("[THINKING]") || log.includes("antigravity agent:");
                 const isPassed = log.includes("PASSED") || log.includes("SUCCESS");
-                const isSystemError = log.includes("SYSTEM") || log.includes("Error") || log.includes("WARNING");
+                const isSystemError = log.includes("ERROR") || log.includes("Error") || log.includes("WARNING");
 
                 let logClass = "text-text-muted";
                 if (isUserPrompt) logClass = "text-agy-cyan font-semibold";
@@ -1702,12 +1770,10 @@ function WorkspaceCockpit() {
                       `[THINKING] COMPLIANCE WARNING: Dynamic context limit reached. Adjusting temperature parameters to 0.8 to escape lock...`,
                       `[ACTION] Re-routing backup semantic agents...`
                     ]);
-                    setTerminalLogs(prev => [
-                      ...prev.slice(0, -1),
+                    setTerminalLogs(prev => appendTerminalLogs(prev, [
                       `[WARNING] --- ESCALATED ANOMALY STRAIN LOADED ---`,
                       `[VM CLUSTER] Dynamic network delay increased by 150ms.`,
-                      `agy 🧠 >> `
-                    ]);
+                    ], terminalCwd));
                   }}
                   disabled={injectedStrain}
                   className="py-2 px-2 rounded-lg border border-text-red/30 bg-text-red/5 text-text-red hover:bg-text-red/10 font-mono text-[9px] font-semibold flex items-center justify-center gap-1 cursor-pointer transition-all disabled:opacity-40"
@@ -1720,15 +1786,13 @@ function WorkspaceCockpit() {
                   type="button"
                   onClick={() => {
                     setVmPatched(true);
-                    setTerminalLogs(prev => [
-                      ...prev.slice(0, -1),
-                      `agy 🧠 >> antigravity sys --patch-vm`,
+                    setTerminalLogs(prev => appendTerminalLogs(prev, [
+                      terminalCommandLine(terminalCwd, "antigravity sys --patch-vm"),
                       `[system] Initiating VM kernel hot-patch...`,
                       `[system] Flush file cache: SUCCESS`,
                       `[system] Recalibrating VPC firewall parameters...`,
                       `[system] Core sandbox fully synchronized and refreshed!`,
-                      `agy 🧠 >> `
-                    ]);
+                    ], terminalCwd));
                   }}
                   disabled={vmPatched}
                   className="py-2 px-2 rounded-lg border border-agy-cyan/30 bg-agy-cyan/5 text-agy-cyan hover:bg-agy-cyan/10 font-mono text-[9px] font-semibold flex items-center justify-center gap-1 cursor-pointer transition-all disabled:opacity-40"
@@ -1741,14 +1805,12 @@ function WorkspaceCockpit() {
                   type="button"
                   onClick={() => {
                     setCompletionProgress(100);
-                    setTerminalLogs(prev => [
-                      ...prev.slice(0, -1),
-                      `agy 🧠 >> antigravity bypass-tests --force-pass`,
+                    setTerminalLogs(prev => appendTerminalLogs(prev, [
+                      terminalCommandLine(terminalCwd, "antigravity bypass-tests --force-pass"),
                       `[system] Initiating test bypass sequence...`,
                       `[system] Override local unit-test results...`,
                       `[system] 3/3 secret validation cases passed (FORCED BY INTERVIEWER)`,
-                      `agy 🧠 >> `
-                    ]);
+                    ], terminalCwd));
                   }}
                   className="py-2 px-2 rounded-lg border border-agy-green/30 bg-agy-green/5 text-agy-green hover:bg-agy-green/10 font-mono text-[9px] font-semibold flex items-center justify-center gap-1 cursor-pointer transition-all"
                 >
@@ -1771,10 +1833,10 @@ function WorkspaceCockpit() {
                     </div>
                     {problemSlug === "agentic-matrix-optimizer" ? (
                       <div className="space-y-1.5">
-                        <p className="text-white font-semibold">Recursive Batching Solution:</p>
-                        <p>1. Target dynamic chunk allocation to prevent stack exhaustions.</p>
-                        <p>2. Pre-verify dimensional constraints before invoking model.</p>
-                        <p className="text-agy-green">Cheat snippet: <code className="bg-bg-dark border border-slate-800 px-1 rounded text-[8.5px]">def solve(matrix): return list(map(sum, matrix))</code></p>
+                        <p className="text-white font-semibold">Latency Cleanup:</p>
+                        <p>1. Remove the artificial sleep from the hot path.</p>
+                        <p>2. Return the direct np.matmul result without changing the function contract.</p>
+                        <p className="text-agy-green">Cheat snippet: <code className="bg-bg-dark border border-slate-800 px-1 rounded text-[8.5px]">return np.matmul(matrix_a, matrix_b)</code></p>
                       </div>
                     ) : (
                       <div className="space-y-1.5">

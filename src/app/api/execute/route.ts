@@ -188,7 +188,6 @@ function buildExecutionEnv(tokens: string[], sandboxDir: string, problemSlug: st
   const systemPath = process.env.PATH || "";
   const customPath = `${BIN_ROOT}${path.delimiter}${systemPath}`;
   const executable = path.basename(tokens[0]);
-  const subcommand = tokens[1] || "";
   const isAntigravity = executable === "antigravity";
   const hiddenRunner = path.join(HIDDEN_TESTS_ROOT, problemSlug, "run_tests.py");
 

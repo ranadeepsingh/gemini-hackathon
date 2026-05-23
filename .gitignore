@@ -88,3 +88,7 @@ candidate_workspace/
 
 # Generated interview workspaces
 candidate_workspace_hidden_tests/
+
+# Local output/tmp files
+/output/
+/tmp/
