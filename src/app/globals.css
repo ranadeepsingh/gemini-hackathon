@@ -149,13 +149,13 @@ label[for]:focus-visible {
   height: 42px;
   filter: drop-shadow(0 0 10px rgba(0, 240, 255, 0.35));
   transform-origin: center;
-  will-change: left, transform;
+  will-change: top, left, transform;
 }
 
 .anti-gravity-cat-track--center {
-  top: 50%;
+  top: 10px;
   left: 50%;
-  transform: translate(-50%, -50%);
+  transform: translateX(-50%);
 }
 
 .anti-gravity-cat {

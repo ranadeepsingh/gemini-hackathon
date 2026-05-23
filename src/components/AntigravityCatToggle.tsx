@@ -10,8 +10,8 @@ interface AntigravityCatToggleProps {
 interface CatRoute {
   id: number;
   duration: number;
-  top: string;
-  left: string[];
+  top: number[];
+  left: number[];
   scaleX: number[];
   y: number[];
   times: number[];
@@ -19,6 +19,8 @@ interface CatRoute {
 
 const CAT_ROUTE_PAUSE_MS = 2800;
 const CAT_INITIAL_CENTER_PAUSE_MS = 1200;
+const CAT_CENTER_ROUTE_EXIT_MS = 2600;
+const CAT_TRACK_WIDTH = 76;
 const CAT_ROUTE_TIMES = [0, 0.015, 0.33, 0.39, 0.55, 0.61, 0.82, 1];
 const CAT_FALL_DISTANCE = 220;
 const CAT_FALL_DURATION = 1.05;
@@ -27,7 +29,8 @@ function randomBetween(min: number, max: number) {
   return min + Math.random() * (max - min);
 }
 
-function createCatRoute(): CatRoute {
+function createCatRoute(startsAtCenter = false): CatRoute {
+  const viewportWidth = window.innerWidth;
   const startsFromLeft = Math.random() > 0.5;
   const firstTurn = startsFromLeft ? randomBetween(30, 58) : randomBetween(42, 70);
   const recoilTurn = startsFromLeft
@@ -36,45 +39,86 @@ function createCatRoute(): CatRoute {
   const finalPush = startsFromLeft
     ? randomBetween(Math.max(firstTurn + 14, 62), 84)
     : randomBetween(16, Math.min(firstTurn - 14, 38));
+  const routeTop = randomBetween(7, 13);
+  const normalLeft = startsFromLeft
+    ? [
+        -92,
+        12,
+        (viewportWidth * firstTurn) / 100,
+        (viewportWidth * firstTurn) / 100,
+        (viewportWidth * recoilTurn) / 100,
+        (viewportWidth * recoilTurn) / 100,
+        (viewportWidth * finalPush) / 100,
+        viewportWidth + 16,
+      ]
+    : [
+        viewportWidth + 16,
+        viewportWidth - 88,
+        (viewportWidth * firstTurn) / 100,
+        (viewportWidth * firstTurn) / 100,
+        (viewportWidth * recoilTurn) / 100,
+        (viewportWidth * recoilTurn) / 100,
+        (viewportWidth * finalPush) / 100,
+        -92,
+      ];
+  const normalScaleX = startsFromLeft
+    ? [1, 1, 1, -1, -1, 1, 1, 1]
+    : [-1, -1, -1, 1, 1, -1, -1, -1];
+  const normalY = [
+    0,
+    randomBetween(-1, 1),
+    randomBetween(-2, 1),
+    0,
+    randomBetween(-1, 2),
+    0,
+    randomBetween(-2, 1),
+    0,
+  ];
+
+  if (startsAtCenter) {
+    const normalDuration = randomBetween(82, 112);
+    const initialPauseSeconds = CAT_INITIAL_CENTER_PAUSE_MS / 1000;
+    const centerExitSeconds = CAT_CENTER_ROUTE_EXIT_MS / 1000;
+    const totalDuration = normalDuration + initialPauseSeconds + centerExitSeconds;
+    const firstVisibleRouteTime = CAT_ROUTE_TIMES[1];
+    const normalizedRouteTime = (time: number) =>
+      (
+        initialPauseSeconds +
+        centerExitSeconds +
+        ((time - firstVisibleRouteTime) / (1 - firstVisibleRouteTime)) * normalDuration
+      ) / totalDuration;
+
+    return {
+      id: Date.now() + Math.random(),
+      duration: totalDuration,
+      top: [
+        routeTop,
+        routeTop,
+        ...normalLeft.slice(1).map(() => routeTop),
+      ],
+      left: [
+        viewportWidth / 2 - CAT_TRACK_WIDTH / 2,
+        viewportWidth / 2 - CAT_TRACK_WIDTH / 2,
+        ...normalLeft.slice(1),
+      ],
+      scaleX: [1, 1, ...normalScaleX.slice(1)],
+      y: [0, 0, ...normalY.slice(1)],
+      times: [
+        0,
+        initialPauseSeconds / totalDuration,
+        (initialPauseSeconds + centerExitSeconds) / totalDuration,
+        ...CAT_ROUTE_TIMES.slice(2).map(normalizedRouteTime),
+      ],
+    };
+  }
 
   return {
     id: Date.now() + Math.random(),
     duration: randomBetween(82, 112),
-    top: `${randomBetween(7, 13)}px`,
-    left: startsFromLeft
-      ? [
-          "-92px",
-          "12px",
-          `${firstTurn}%`,
-          `${firstTurn}%`,
-          `${recoilTurn}%`,
-          `${recoilTurn}%`,
-          `${finalPush}%`,
-          "calc(100% + 16px)",
-        ]
-      : [
-          "calc(100% + 16px)",
-          "calc(100% - 88px)",
-          `${firstTurn}%`,
-          `${firstTurn}%`,
-          `${recoilTurn}%`,
-          `${recoilTurn}%`,
-          `${finalPush}%`,
-          "-92px",
-        ],
-    scaleX: startsFromLeft
-      ? [1, 1, 1, -1, -1, 1, 1, 1]
-      : [-1, -1, -1, 1, 1, -1, -1, -1],
-    y: [
-      0,
-      randomBetween(-1, 1),
-      randomBetween(-2, 1),
-      0,
-      randomBetween(-1, 2),
-      0,
-      randomBetween(-2, 1),
-      0,
-    ],
+    top: normalLeft.map(() => routeTop),
+    left: normalLeft,
+    scaleX: normalScaleX,
+    y: normalY,
     times: CAT_ROUTE_TIMES,
   };
 }
@@ -106,13 +150,13 @@ export default function AntigravityCatToggle({ className = "" }: AntigravityCatT
       return;
     }
 
-    const routeDelay = catRoute
-      ? catRoute.duration * 1000 + CAT_ROUTE_PAUSE_MS
-      : CAT_INITIAL_CENTER_PAUSE_MS;
+    if (!catRoute) {
+      return;
+    }
 
     const routeTimer = window.setTimeout(() => {
       setCatRoute(createCatRoute());
-    }, routeDelay);
+    }, catRoute.duration * 1000 + CAT_ROUTE_PAUSE_MS);
 
     return () => window.clearTimeout(routeTimer);
   }, [catEnabled, catFalling, catRoute, shouldReduceMotion]);
@@ -125,7 +169,7 @@ export default function AntigravityCatToggle({ className = "" }: AntigravityCatT
       return;
     }
 
-    setCatRoute(null);
+    setCatRoute(createCatRoute(true));
     setCatFalling(false);
     setCatEnabled(true);
   };
@@ -223,11 +267,13 @@ export default function AntigravityCatToggle({ className = "" }: AntigravityCatT
                 onClick={handleCatClick}
                 initial={{
                   left: catRoute.left[0],
+                  top: catRoute.top[0],
                   scaleX: catRoute.scaleX[0],
                   y: catRoute.y[0],
                 }}
                 animate={{
                   left: catRoute.left,
+                  top: catRoute.top,
                   scaleX: catRoute.scaleX,
                   y: catRoute.y,
                 }}
@@ -236,7 +282,6 @@ export default function AntigravityCatToggle({ className = "" }: AntigravityCatT
                   ease: "easeInOut",
                   times: catRoute.times,
                 }}
-                style={{ top: catRoute.top }}
               >
                 {catGraphic}
               </motion.div>
