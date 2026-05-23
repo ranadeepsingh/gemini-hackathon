@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { spawn } from "child_process";
+import { spawn, spawnSync } from "child_process";
 import path from "path";
 import fs from "fs";
 import { supabase } from "@/lib/supabase/client";
@@ -394,6 +394,30 @@ export async function POST(req: NextRequest) {
 
     const result = await runCommand(executableTokens, sandboxDir, execEnv, problemSlug);
 
+    // Calculate workspace tokens if this is a skill verification or prompt engineering task
+    let workspaceTokens: number | undefined = undefined;
+    const isSkillOrPromptTask = problemSlug.startsWith("skill-") || problemSlug.startsWith("prompt-");
+
+    if (isSkillOrPromptTask) {
+      try {
+        const countResult = spawnSync(SDK_PYTHON_BIN, [
+          SDK_RUNNER,
+          "--workspace",
+          path.join(SANDBOX_ROOT, problemSlug),
+          "--problem",
+          problemSlug,
+          "--mode",
+          "count_tokens"
+        ], { encoding: "utf-8" });
+
+        if (countResult.status === 0) {
+          workspaceTokens = parseInt(countResult.stdout.trim()) || 0;
+        }
+      } catch (tokenErr) {
+        console.error("Token counting command failed:", tokenErr);
+      }
+    }
+
     // If sessionId is present, parse metrics and update database
     if (sessionId) {
       try {
@@ -423,7 +447,10 @@ export async function POST(req: NextRequest) {
             testRunCount += 1;
           }
 
-          if (metricsMatch) {
+          if (isSkillOrPromptTask && workspaceTokens !== undefined) {
+            totalInputTokens = workspaceTokens;
+            costUsd = (totalInputTokens * 0.00000015) + (totalOutputTokens * 0.00000060);
+          } else if (metricsMatch) {
             totalInputTokens += parseInt(metricsMatch[1]);
             totalOutputTokens += parseInt(metricsMatch[2]);
             totalLlmCalls += 1;
@@ -447,7 +474,10 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    return NextResponse.json(result);
+    return NextResponse.json({
+      ...result,
+      workspaceTokens
+    });
   } catch (err: unknown) {
     return NextResponse.json({ error: getErrorMessage(err) }, { status: 400 });
   }

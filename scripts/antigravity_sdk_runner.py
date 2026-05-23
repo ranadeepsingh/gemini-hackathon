@@ -27,7 +27,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run the official Antigravity SDK in an AntiCode workspace.")
     parser.add_argument("--workspace", required=True, help="Absolute candidate workspace path.")
     parser.add_argument("--problem", required=True, help="Problem slug for prompt context.")
-    parser.add_argument("--mode", choices=["prompt", "run", "ask", "status"], default="prompt")
+    parser.add_argument("--mode", choices=["prompt", "run", "ask", "status", "count_tokens"], default="prompt")
     parser.add_argument("--prompt", default="", help="Candidate prompt. Required for prompt/ask mode.")
     return parser.parse_args()
 
@@ -291,6 +291,38 @@ async def async_main() -> int:
 
     if args.mode == "status":
         return print_status(workspace, args.problem)
+
+    if args.mode == "count_tokens":
+        input_file_map = {
+            "prompt-adversarial-defense": "prompts/financial_advisor.md",
+            "prompt-pydantic-guard": "prompts/customer_onboarding.md",
+            "prompt-data-leak-shield": "prompts/clinical_notes.md",
+            "skill-log-parser": "skills/log_parser/SKILL.md",
+            "skill-k8s-debugger": "skills/k8s_triage/SKILL.md",
+            "skill-db-migrator": "skills/schema_migrator/SKILL.md",
+        }
+        
+        problem = args.problem
+        target_file = None
+        if problem in input_file_map:
+            target_file = pathlib.Path(workspace) / input_file_map[problem]
+
+        total_tokens = 0
+        if target_file and target_file.is_file():
+            try:
+                content = target_file.read_text(encoding="utf-8", errors="ignore")
+                total_tokens = estimate_embedding_tokens(content)
+            except Exception:
+                pass
+        else:
+            for full_path in iter_visible_files(workspace):
+                try:
+                    content = full_path.read_text(encoding="utf-8", errors="ignore")
+                    total_tokens += estimate_embedding_tokens(content)
+                except Exception:
+                    pass
+        safe_print(str(total_tokens))
+        return 0
 
     if args.mode in {"prompt", "ask"} and not args.prompt.strip():
         safe_print("[antigravity sdk] ERROR: prompt is empty. No files were modified.")

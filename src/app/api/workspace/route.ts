@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
 import { refreshOutdatedStarterFiles } from "@/lib/workspace/starter-repairs";
+import { getSupabaseServerClient } from "@/lib/supabase/server";
 
 const TEMPLATES_ROOT = path.resolve(process.cwd(), "candidate_workspace_templates");
 const SANDBOX_ROOT = path.resolve(process.cwd(), "candidate_workspace");
@@ -240,6 +241,32 @@ export async function GET(req: NextRequest) {
       fs.writeFileSync(challengeMdPath, generatedChallengeMd, "utf-8");
     }
 
+    // Restore saved files from database if available and not a reset request
+    const sessionId = searchParams.get("sessionId");
+    if (!reset && sessionId && sessionId !== "demo-session-id") {
+      try {
+        const supabaseServer = getSupabaseServerClient();
+        const { data: sessionData } = await supabaseServer
+          .from("interview_sessions")
+          .select("metadata")
+          .eq("id", sessionId)
+          .single();
+
+        const savedFiles = sessionData?.metadata?.saved_files as Record<string, string> | undefined;
+        if (savedFiles && Object.keys(savedFiles).length > 0) {
+          for (const [filename, content] of Object.entries(savedFiles)) {
+            const targetPath = path.resolve(sandboxDir, filename);
+            if (isPathInside(sandboxDir, targetPath) && !HIDDEN_TEST_FILES.has(path.basename(targetPath))) {
+              fs.mkdirSync(path.dirname(targetPath), { recursive: true });
+              fs.writeFileSync(targetPath, content, "utf-8");
+            }
+          }
+        }
+      } catch (err) {
+        console.warn("Failed to restore saved files from database:", err);
+      }
+    }
+
     const files = readFilesRecursively(sandboxDir);
 
     const activeFile = files["challenge.md"] ? "challenge.md" : (Object.keys(files)[0] || "");
@@ -269,6 +296,21 @@ export async function POST(req: NextRequest) {
 
     if (HIDDEN_TEST_FILES.has(path.basename(targetPath))) {
       return NextResponse.json({ error: "Access Denied: Cannot modify hidden test or validation files." }, { status: 403 });
+    }
+
+    if (problemSlug === "prompt-adversarial-defense") {
+      const lowerFilename = filename.toLowerCase();
+      const isAllowed =
+        lowerFilename === "prompts/financial_advisor.md" ||
+        lowerFilename === "financial_advisor.md" ||
+        lowerFilename.endsWith("/prompts/financial_advisor.md") ||
+        lowerFilename.endsWith("/financial_advisor.md");
+      if (!isAllowed) {
+        return NextResponse.json(
+          { error: "Access Denied: Only prompts/financial_advisor.md is editable in this task." },
+          { status: 403 }
+        );
+      }
     }
 
     fs.mkdirSync(path.dirname(targetPath), { recursive: true });

@@ -165,6 +165,7 @@ interface ExecuteResponse {
   success?: boolean;
   error?: string;
   newCwd?: string;
+  workspaceTokens?: number;
 }
 
 interface GradeReport {
@@ -181,6 +182,12 @@ interface GradeReport {
   test_cases_passed?: number;
   test_cases_total?: number;
   is_passing?: boolean;
+  workspace_tokens?: number;
+  evaluation_tokens?: {
+    prompt_tokens: number;
+    candidates_tokens: number;
+    total_tokens: number;
+  };
 }
 
 interface TestPanelState {
@@ -423,10 +430,21 @@ function getHighlighter(content: string, filename: string): string {
   return escapeHtml(content);
 }
 
-function isReadOnlyFile(filePath: string): boolean {
+function isReadOnlyFile(filePath: string, problemSlug?: string): boolean {
   if (!filePath) return false;
   const lower = filePath.toLowerCase();
-  return lower === "challenge.md" || lower.endsWith("/challenge.md");
+  if (lower === "challenge.md" || lower.endsWith("/challenge.md")) {
+    return true;
+  }
+  if (problemSlug === "prompt-adversarial-defense") {
+    return !(
+      lower === "prompts/financial_advisor.md" ||
+      lower.endsWith("/prompts/financial_advisor.md") ||
+      lower === "financial_advisor.md" ||
+      lower.endsWith("/financial_advisor.md")
+    );
+  }
+  return false;
 }
 
 function extractFailedTestDetails(rawText: string): string[] {
@@ -711,6 +729,30 @@ function WorkspaceCockpit() {
     setCode(nextActive ? workspaceData.files[nextActive] || "" : "");
   }, []);
 
+  const saveFilesToDb = useCallback(async (currentFiles: Record<string, string>) => {
+    if (!sessionId || sessionId === "demo-session-id") return;
+    try {
+      const { data: sessionData } = await supabase
+        .from("interview_sessions")
+        .select("metadata")
+        .eq("id", sessionId)
+        .single();
+      
+      const existingMetadata = sessionData?.metadata || {};
+      const updatedMetadata = {
+        ...existingMetadata,
+        saved_files: currentFiles
+      };
+
+      await supabase
+        .from("interview_sessions")
+        .update({ metadata: updatedMetadata })
+        .eq("id", sessionId);
+    } catch (err) {
+      console.error("Failed to save files state in database:", err);
+    }
+  }, [sessionId]);
+
   // Keep editor scroll alignment when tabs change
   useEffect(() => {
     if (textareaRef.current) textareaRef.current.scrollTop = 0;
@@ -759,25 +801,27 @@ function WorkspaceCockpit() {
               </div>
             );
           } else {
-            const isReadOnly = isReadOnlyFile(child.path);
+            const isReadOnly = isReadOnlyFile(child.path, problemSlug);
             return (
               <button
                 type="button"
                 key={child.path}
                 onClick={() => handleTabChange(child.path)}
                 className={`w-full flex items-center gap-1.5 px-2 py-1 text-left font-mono text-[10px] rounded transition-colors cursor-pointer ${
-                  isSelected
-                    ? isReadOnly
-                      ? "bg-agy-violet/10 text-agy-violet font-bold border-r-2 border-agy-violet"
-                      : "bg-agy-green/10 text-agy-green font-bold border-r-2 border-agy-green"
-                    : "text-text-muted/80 hover:text-white hover:bg-slate-800/20"
+                  isReadOnly
+                    ? isSelected
+                      ? "bg-agy-violet/25 text-agy-violet font-bold border-r-2 border-agy-violet shadow-[inset_0_0_8px_rgba(200,80,255,0.15)]"
+                      : "bg-agy-violet/5 text-agy-violet/85 hover:text-white hover:bg-agy-violet/15"
+                    : isSelected
+                      ? "bg-agy-green/25 text-agy-green font-bold border-r-2 border-agy-green shadow-[inset_0_0_8px_rgba(0,255,100,0.15)]"
+                      : "bg-agy-green/5 text-agy-green/85 hover:text-white hover:bg-agy-green/15"
                 }`}
                 style={{ paddingLeft: `${(depth + 1) * 8}px` }}
               >
                 {isReadOnly ? (
-                  <Lock className={`w-3.5 h-3.5 shrink-0 ${isSelected ? "text-agy-violet animate-pulse" : "text-text-muted/40"}`} />
+                  <Lock className={`w-3.5 h-3.5 shrink-0 ${isSelected ? "text-agy-violet animate-pulse" : "text-agy-violet/70"}`} />
                 ) : (
-                  <FileCode className={`w-3.5 h-3.5 shrink-0 ${isSelected ? "text-agy-green" : "text-text-muted/50"}`} />
+                  <FileCode className={`w-3.5 h-3.5 shrink-0 ${isSelected ? "text-agy-green" : "text-agy-green/70"}`} />
                 )}
                 <span className="truncate">{child.name}</span>
               </button>
@@ -939,7 +983,7 @@ function WorkspaceCockpit() {
           "Loading candidate workspace files..."
         ], ""));
 
-        const res = await fetch(`/api/workspace?problemSlug=${problemSlug}${resetSandbox ? "&reset=true" : ""}`);
+        const res = await fetch(`/api/workspace?problemSlug=${problemSlug}&sessionId=${sessionId}${resetSandbox ? "&reset=true" : ""}`);
         if (!res.ok) throw new Error("Workspace initialization failed");
         const data = await res.json() as WorkspaceResponse;
 
@@ -965,11 +1009,14 @@ function WorkspaceCockpit() {
     return () => {
       active = false;
     };
-  }, [problemSlug, resetSandbox, reconcileWorkspaceFiles]);
+  }, [problemSlug, resetSandbox, reconcileWorkspaceFiles, sessionId]);
 
   // Debounced auto-save to host filesystem
   useEffect(() => {
     if (!activeTab || code === undefined) return;
+
+    // Skip auto-saving if the file is read-only
+    if (isReadOnlyFile(activeTab, problemSlug)) return;
 
     // Skip saving if it matches the current loaded state perfectly
     if (files[activeTab] === code) return;
@@ -1087,7 +1134,7 @@ function WorkspaceCockpit() {
       }
 
       try {
-        const res = await fetch(`/api/workspace?problemSlug=${problemSlug}`);
+        const res = await fetch(`/api/workspace?problemSlug=${problemSlug}&sessionId=${sessionId}`);
         if (res.ok) {
           const workspaceData = await res.json() as WorkspaceResponse;
           reconcileWorkspaceFiles(workspaceData);
@@ -1128,6 +1175,33 @@ function WorkspaceCockpit() {
     });
 
     try {
+      // Ensure current editor file is saved before running tests
+      const currentFiles = { ...files };
+      if (activeTab && code !== undefined) {
+        currentFiles[activeTab] = code;
+        if (files[activeTab] !== code) {
+          try {
+            const saveResponse = await fetch("/api/workspace", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                problemSlug,
+                filename: activeTab,
+                code
+              })
+            });
+            if (saveResponse.ok) {
+              setFiles(prev => ({ ...prev, [activeTab]: code }));
+            }
+          } catch (saveErr) {
+            console.error("Save before test run failed:", saveErr);
+          }
+        }
+      }
+
+      // Save entire files state to database so it persists after refresh
+      await saveFilesToDb(currentFiles);
+
       const response = await fetch("/api/execute", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1145,9 +1219,14 @@ function WorkspaceCockpit() {
 
       setTestPanel(parseTestRunResult(data.stdout || "", data.stderr || "", data.code));
 
+      if (data.workspaceTokens !== undefined) {
+        setTotalTokens(data.workspaceTokens);
+        setTotalCost(data.workspaceTokens * 0.00000015);
+      }
+
       // Re-fetch files from the workspace to load any changes
       try {
-        const res = await fetch(`/api/workspace?problemSlug=${problemSlug}`);
+        const res = await fetch(`/api/workspace?problemSlug=${problemSlug}&sessionId=${sessionId}`);
         if (res.ok) {
           const workspaceData = await res.json() as WorkspaceResponse;
           reconcileWorkspaceFiles(workspaceData);
@@ -1211,7 +1290,7 @@ function WorkspaceCockpit() {
 
       // Re-fetch files in case shell command modified them
       try {
-        const res = await fetch(`/api/workspace?problemSlug=${problemSlug}`);
+        const res = await fetch(`/api/workspace?problemSlug=${problemSlug}&sessionId=${sessionId}`);
         if (res.ok) {
           const workspaceData = await res.json() as WorkspaceResponse;
           reconcileWorkspaceFiles(workspaceData);
@@ -1356,6 +1435,33 @@ function WorkspaceCockpit() {
     ], terminalCwd));
 
     try {
+      // Ensure current editor file is saved before evaluating
+      const currentFiles = { ...files };
+      if (activeTab && code !== undefined) {
+        currentFiles[activeTab] = code;
+        if (files[activeTab] !== code) {
+          try {
+            const saveResponse = await fetch("/api/workspace", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                problemSlug,
+                filename: activeTab,
+                code
+              })
+            });
+            if (saveResponse.ok) {
+              setFiles(prev => ({ ...prev, [activeTab]: code }));
+            }
+          } catch (saveErr) {
+            console.error("Save before evaluation failed:", saveErr);
+          }
+        }
+      }
+
+      // Save entire files state to database so it persists after refresh
+      await saveFilesToDb(currentFiles);
+
       const response = await fetch("/api/evaluate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1379,8 +1485,39 @@ function WorkspaceCockpit() {
       const encodedGradeReport = encodeURIComponent(JSON.stringify(gradeReport));
 
       if (sessionId === "demo-session-id") {
+        const evalPrompt = gradeReport.evaluation_tokens?.prompt_tokens || 0;
+        const evalCandidates = gradeReport.evaluation_tokens?.candidates_tokens || 0;
+        const finalInputTokens = (gradeReport.workspace_tokens || 0) + evalPrompt;
+        const finalOutputTokens = evalCandidates;
+        const finalCostUsd = (finalInputTokens * 0.00000015) + (finalOutputTokens * 0.00000060);
+
+        setTotalTokens(finalInputTokens + finalOutputTokens);
+        setTotalCost(finalCostUsd);
+
         router.push(`/reports/demo-report-id?problem=${problemSlug}&grade=${encodedGradeReport}`);
         return;
+      }
+
+      // Update session tokens with evaluation token usage and workspace tokens
+      if (sessionId && gradeReport.workspace_tokens !== undefined) {
+        try {
+          const evalPrompt = gradeReport.evaluation_tokens?.prompt_tokens || 0;
+          const evalCandidates = gradeReport.evaluation_tokens?.candidates_tokens || 0;
+          const finalInputTokens = gradeReport.workspace_tokens + evalPrompt;
+          const finalOutputTokens = evalCandidates;
+          const finalCostUsd = (finalInputTokens * 0.00000015) + (finalOutputTokens * 0.00000060);
+
+          await supabase
+            .from("interview_sessions")
+            .update({
+              total_input_tokens: finalInputTokens,
+              total_output_tokens: finalOutputTokens,
+              cost_usd: finalCostUsd
+            })
+            .eq("id", sessionId);
+        } catch (sessionUpdErr) {
+          console.error("Failed to update final session tokens in DB:", sessionUpdErr);
+        }
       }
 
       // Save evaluation scorecard directly to Supabase
@@ -1539,12 +1676,18 @@ function WorkspaceCockpit() {
                 {openTabs.filter(filePath => files[filePath] !== undefined).map((filePath) => {
                   const isSelected = activeTab === filePath;
                   const basename = getBasename(filePath);
-                  const isReadOnly = isReadOnlyFile(filePath);
+                  const isReadOnly = isReadOnlyFile(filePath, problemSlug);
                   return (
                     <div
                       key={filePath}
-                      className={`group h-7 px-3 py-1.5 border-r border-l border-slate-800 flex items-center gap-1.5 relative cursor-pointer text-[11px] ${
-                        isSelected ? "bg-bg-dark text-white font-semibold" : "text-text-muted hover:text-white"
+                      className={`group h-7 px-3 py-1.5 border-r border-l border-slate-800 flex items-center gap-1.5 relative cursor-pointer text-[11px] transition-colors ${
+                        isReadOnly
+                          ? isSelected
+                            ? "bg-agy-violet/15 text-agy-violet font-semibold"
+                            : "bg-agy-violet/5 text-agy-violet/75 hover:bg-agy-violet/10 hover:text-agy-violet"
+                          : isSelected
+                            ? "bg-agy-green/15 text-agy-green font-semibold"
+                            : "bg-agy-green/5 text-agy-green/75 hover:bg-agy-green/10 hover:text-agy-green"
                       }`}
                     >
                       <button
@@ -1555,9 +1698,9 @@ function WorkspaceCockpit() {
                         className="flex min-w-0 items-center gap-1.5 text-left"
                       >
                         {isReadOnly ? (
-                          <Lock className={`w-3 h-3 shrink-0 ${isSelected ? "text-agy-violet animate-pulse" : "text-text-muted/60"}`} />
+                          <Lock className={`w-3 h-3 shrink-0 ${isSelected ? "text-agy-violet animate-pulse" : "text-agy-violet/60"}`} />
                         ) : (
-                          <FileCode className={`w-3 h-3 shrink-0 ${isSelected ? "text-agy-green" : "text-text-muted"}`} />
+                          <FileCode className={`w-3 h-3 shrink-0 ${isSelected ? "text-agy-green" : "text-agy-green/60"}`} />
                         )}
                         <span className="truncate max-w-[120px]" title={filePath}>{basename}</span>
                       </button>
@@ -1566,9 +1709,9 @@ function WorkspaceCockpit() {
                         aria-label={`Close file ${filePath}`}
                         onClick={(event) => handleCloseTab(filePath, event)}
                         className={`ml-1 grid h-4 w-4 place-items-center rounded border border-transparent transition-colors ${
-                          isSelected
-                            ? "text-text-muted hover:border-slate-700 hover:bg-slate-900 hover:text-white"
-                            : "text-text-muted/60 hover:border-slate-700 hover:bg-slate-900 hover:text-white"
+                          isReadOnly
+                            ? "text-agy-violet/60 hover:border-agy-violet/30 hover:bg-agy-violet/10 hover:text-agy-violet"
+                            : "text-agy-green/60 hover:border-agy-green/30 hover:bg-agy-green/10 hover:text-agy-green"
                         }`}
                         title="Close tab"
                       >
@@ -1642,6 +1785,7 @@ function WorkspaceCockpit() {
                     onChange={(e) => setCode(e.target.value)}
                     onScroll={handleScroll}
                     spellCheck="false"
+                    readOnly={isReadOnlyFile(activeTab, problemSlug)}
                     disabled={!activeTab || isRunning || isEvaluating}
                     className="absolute inset-0 w-full h-full p-5 m-0 border-0 leading-[21px] font-mono text-xs bg-transparent text-transparent caret-white resize-none overflow-auto outline-none focus:ring-0 focus:outline-none"
                     style={{ tabSize: 4 }}
