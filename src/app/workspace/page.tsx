@@ -183,6 +183,15 @@ interface GradeReport {
   is_passing?: boolean;
 }
 
+interface TestPanelState {
+  status: "idle" | "running" | "passed" | "failed" | "error";
+  passed: number;
+  total: number;
+  failedTests: string[];
+  exitCode?: number;
+  summary: string;
+}
+
 // Client-side fallback rubrics for resilient offline capability
 const LOCAL_FALLBACK_RUBRICS: Record<string, WorkspaceRubric[]> = {
   "agentic-matrix-optimizer": [
@@ -420,6 +429,51 @@ function isReadOnlyFile(filePath: string): boolean {
   return lower === "challenge.md" || lower.endsWith("/challenge.md");
 }
 
+function parseTestRunResult(stdout: string, stderr: string, exitCode?: number): TestPanelState {
+  const rawText = stripAnsiCodes(`${stdout}\n${stderr}`);
+  const lines = rawText
+    .split("\n")
+    .map(line => line.trim())
+    .filter(Boolean);
+
+  const ranMatch = rawText.match(/Ran\s+(\d+)\s+tests?/i);
+  const failureMatch = rawText.match(/failures=(\d+)/i);
+  const errorMatch = rawText.match(/errors=(\d+)/i);
+  const total = ranMatch ? Number(ranMatch[1]) : 0;
+  const failures = failureMatch ? Number(failureMatch[1]) : 0;
+  const errors = errorMatch ? Number(errorMatch[1]) : 0;
+  const explicitFailedCount = failures + errors;
+  const failedTests = lines
+    .filter(line => /^(FAIL|ERROR):\s+/.test(line) || /^FAILED\s+/.test(line))
+    .map(line => line.replace(/^FAILED\s+/, "FAILED: "));
+
+  const inferredTotal = total || (exitCode === 0 ? 1 : Math.max(1, failedTests.length));
+  const failedCount = Math.max(explicitFailedCount, failedTests.length, exitCode === 0 ? 0 : 1);
+  const passed = Math.max(0, inferredTotal - failedCount);
+  const status = exitCode === 0 && failedCount === 0 ? "passed" : "failed";
+
+  if (status === "failed" && failedTests.length === 0) {
+    const assertionLines = lines.filter(line => (
+      line.includes("AssertionError") ||
+      line.includes("Traceback") ||
+      line.includes("Error:") ||
+      line.includes("FAILED")
+    ));
+    failedTests.push(assertionLines[0] || `Test runner exited with code ${exitCode ?? 1}`);
+  }
+
+  return {
+    status,
+    passed,
+    total: inferredTotal,
+    failedTests,
+    exitCode,
+    summary: status === "passed"
+      ? "All validation tests passed."
+      : `${failedTests.length || failedCount} validation test${(failedTests.length || failedCount) === 1 ? "" : "s"} failed.`
+  };
+}
+
 function WorkspaceCockpit() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -450,13 +504,19 @@ function WorkspaceCockpit() {
   const [completionProgress, setCompletionProgress] = useState(0);
   const [thoughtsLog, setThoughtsLog] = useState<string[]>([]);
   const [sessionDetails, setSessionDetails] = useState<SessionDetails | null>(null);
+  const [testPanel, setTestPanel] = useState<TestPanelState>({
+    status: "idle",
+    passed: 0,
+    total: 0,
+    failedTests: [],
+    summary: "Run tests to see validation results."
+  });
 
 
 
   const terminalEndRef = useRef<HTMLDivElement>(null);
   const terminalViewportRef = useRef<HTMLDivElement>(null);
   const shouldStickToTerminalBottomRef = useRef(true);
-  const thoughtsEndRef = useRef<HTMLDivElement>(null);
 
   // Editor overlapping refs for scroll-synchronization
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -917,11 +977,6 @@ function WorkspaceCockpit() {
     return () => window.cancelAnimationFrame(frame);
   }, [terminalLogs]);
 
-  // Thoughts Auto-scrolling
-  useEffect(() => {
-    thoughtsEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [thoughtsLog]);
-
   const handleTabChange = (tabName: string) => {
     // Save current active tab code back to cache first
     if (activeTab && code !== undefined) {
@@ -1027,10 +1082,16 @@ function WorkspaceCockpit() {
 
   // Run candidate unit test assertion suite
   const handleRunTests = async () => {
-    setTerminalLogs(prev => appendTerminalLogs(prev, [
-      terminalCommandLine(terminalCwd, "antigravity test"),
-      "[system] Running hidden validation suite..."
-    ], terminalCwd));
+    if (isRunning || isEvaluating) return;
+
+    setIsRunning(true);
+    setTestPanel({
+      status: "running",
+      passed: 0,
+      total: 0,
+      failedTests: [],
+      summary: "Running hidden validation suite..."
+    });
 
     try {
       const response = await fetch("/api/execute", {
@@ -1048,17 +1109,7 @@ function WorkspaceCockpit() {
         throw new Error(data.error || `Command failed with status ${response.status}`);
       }
 
-      const newLogs = normalizeTerminalLines([
-        ...(data.stdout ? [data.stdout] : []),
-        ...(data.stderr ? [data.stderr] : [])
-      ]);
-      if (newLogs.length === 0) {
-        newLogs.push(`Tests executed. Exit Code: ${data.code}`);
-      }
-
-      setTerminalLogs(prev => appendTerminalLogs(prev, [
-        ...newLogs,
-      ], terminalCwd));
+      setTestPanel(parseTestRunResult(data.stdout || "", data.stderr || "", data.code));
 
       // Re-fetch files from the workspace to load any changes
       try {
@@ -1071,9 +1122,15 @@ function WorkspaceCockpit() {
         console.error("Failed to re-sync files:", e);
       }
     } catch (err: unknown) {
-      setTerminalLogs(prev => appendTerminalLogs(prev, [
-        `Error running tests: ${getErrorMessage(err)}`,
-      ], terminalCwd));
+      setTestPanel({
+        status: "error",
+        passed: 0,
+        total: 1,
+        failedTests: [getErrorMessage(err)],
+        summary: "Unable to run validation tests."
+      });
+    } finally {
+      setIsRunning(false);
     }
   };
 
@@ -1876,47 +1933,79 @@ function WorkspaceCockpit() {
               </div>
             </div>
 
-            {/* Detailed thinking trace logs */}
+            {/* Validation test results */}
             <div className="flex-1 bg-bg-dark border border-slate-800/60 rounded-xl p-4 flex flex-col overflow-hidden min-h-0 relative">
               <div className="absolute inset-0 bg-cyber-grid bg-[size:20px_20px] opacity-[0.03] pointer-events-none" />
 
               <div className="font-mono text-[10px] text-text-muted pb-2 border-b border-slate-800/80 uppercase tracking-widest shrink-0 flex items-center gap-1.5 relative z-10">
-                <Layers className="w-3.5 h-3.5 text-agy-green" />
-                Agent Thought Trace Observability
+                <CheckCircle className={`w-3.5 h-3.5 ${
+                  testPanel.status === "failed" || testPanel.status === "error"
+                    ? "text-text-red"
+                    : "text-agy-green"
+                }`} />
+                Validation Test Results
               </div>
 
               <div className="flex-1 overflow-auto mt-3 font-mono text-[10px] leading-relaxed space-y-3 select-text pr-1 relative z-10">
-                {thoughtsLog.length === 0 ? (
+                {testPanel.status === "idle" ? (
                   <div className="h-full flex flex-col items-center justify-center text-center text-text-muted/60 uppercase">
-                    <Activity className="w-6 h-6 text-slate-800 animate-pulse mb-2" />
-                    <span>No thinking traces streaming. Deploy agent via terminal.</span>
+                    <CheckCircle className="w-6 h-6 text-slate-800 mb-2" />
+                    <span>Run tests to populate validation results.</span>
+                  </div>
+                ) : testPanel.status === "running" ? (
+                  <div className="h-full flex flex-col items-center justify-center text-center text-agy-cyan uppercase">
+                    <RefreshCw className="w-6 h-6 animate-spin mb-2" />
+                    <span>{testPanel.summary}</span>
                   </div>
                 ) : (
-                  thoughtsLog.map((t, i) => {
-                    const isThinking = t.includes("THINKING");
-                    const cleanText = t.replace(/.*(THINKING|EXECUTED): /, "");
-                    return (
-                      <div key={i} className={`p-2.5 rounded-lg border transition-all duration-300 ${
-                        isThinking
-                          ? "bg-agy-green/5 border-agy-green/20 hover:border-agy-green/40 shadow-[0_2px_10px_rgba(0,255,102,0.02)]"
-                          : "bg-bg-panel/40 border-slate-800/80 hover:border-slate-700/80 text-text-muted"
-                      }`}>
-                        <div className="flex items-center justify-between mb-1.5 border-b border-slate-800/40 pb-1">
-                          <span className={`text-[8px] font-mono uppercase px-2 py-0.5 rounded tracking-widest ${
-                            isThinking ? "bg-agy-green/10 text-agy-green font-bold" : "bg-bg-panel text-text-muted/80"
-                          }`}>
-                            {isThinking ? "COGNITIVE QUERY" : "SYSTEM ACTION"}
+                  <>
+                    <div className={`rounded-xl border p-4 ${
+                      testPanel.status === "passed"
+                        ? "border-agy-green/25 bg-agy-green/5"
+                        : "border-text-red/25 bg-text-red/5"
+                    }`}>
+                      <div className="flex items-end justify-between gap-3">
+                        <div>
+                          <span className="text-[8px] uppercase tracking-widest text-text-muted block">Tests Passed</span>
+                          <span className="text-3xl font-extrabold text-white tracking-tight">
+                            {testPanel.passed}/{testPanel.total}
                           </span>
-                          <span className="text-[7px] text-text-muted/40 uppercase font-mono">NODE ACTIVE</span>
                         </div>
-                        <p className={`text-[10px] leading-relaxed font-mono ${isThinking ? "text-white" : "text-agy-violet"}`}>
-                          {cleanText}
-                        </p>
+                        <span className={`text-[9px] uppercase font-bold px-2 py-1 rounded border ${
+                          testPanel.status === "passed"
+                            ? "text-agy-green border-agy-green/25 bg-agy-green/10"
+                            : "text-text-red border-text-red/25 bg-text-red/10"
+                        }`}>
+                          {testPanel.status === "passed" ? "PASSING" : "ATTENTION"}
+                        </span>
                       </div>
-                    );
-                  })
+                      <p className="mt-3 text-text-muted leading-relaxed">{testPanel.summary}</p>
+                    </div>
+
+                    <div className="rounded-xl border border-slate-800/80 bg-bg-panel/30 p-3">
+                      <div className="flex items-center justify-between border-b border-slate-800/60 pb-2 mb-2">
+                        <span className="text-[8px] uppercase tracking-widest text-text-muted">Failed Tests</span>
+                        <span className="text-[8px] text-text-muted/70 uppercase">
+                          {testPanel.failedTests.length} item{testPanel.failedTests.length === 1 ? "" : "s"}
+                        </span>
+                      </div>
+                      {testPanel.failedTests.length === 0 ? (
+                        <div className="flex items-center gap-2 text-agy-green py-2">
+                          <CheckCircle className="w-3.5 h-3.5" />
+                          <span>All listed tests passed.</span>
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          {testPanel.failedTests.map((testName, index) => (
+                            <div key={`${testName}-${index}`} className="rounded-lg border border-text-red/20 bg-bg-dark/70 p-2.5 text-text-red leading-relaxed">
+                              {testName}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </>
                 )}
-                <div ref={thoughtsEndRef} />
               </div>
             </div>
 
