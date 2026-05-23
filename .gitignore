@@ -90,5 +90,9 @@ candidate_workspace/
 candidate_workspace_hidden_tests/
 
 # Local output/tmp files
-/output/
+/output/*
+!/output/imagegen/
+/output/imagegen/*
+!/output/imagegen/anticode-pitch-slides/
+!/output/imagegen/anticode-pitch-slides/**
 /tmp/
