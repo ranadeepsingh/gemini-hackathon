@@ -29,7 +29,8 @@ class TestK8sTriageSkill(unittest.TestCase):
             content = f.read()
         self.assertIn("name:", content, "Frontmatter must define a name.")
         self.assertIn("description:", content, "Frontmatter must define a description.")
-        self.assertIn("k8s_triage", content, "Frontmatter name must include k8s_triage.")
+        self.assertNotIn("k8s_triage_unconfigured", content, "SKILL.md frontmatter must be updated from the starter stub.")
+        self.assertNotIn("Kubernetes Sandbox Triage Skill Starter", content, "SKILL.md content must be updated from the starter stub.")
 
 if __name__ == "__main__":
     unittest.main()
