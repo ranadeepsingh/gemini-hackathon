@@ -1,4 +1,4 @@
--- YeetCode Database Schema Migration
+-- AntiCode Database Schema Migration
 -- Designed for Google Antigravity Cyberpunk Aesthetics & Realtime Telemetry Streaming
 -- Expanded for Highly Comprehensive Dynamic Rubrics, Granular Token Telemetry, and Secure Session Token Isolation
 
@@ -29,6 +29,16 @@ CREATE TABLE IF NOT EXISTS public.categories (
     glow_color TEXT, -- Cyberpunk CSS color token
     icon TEXT, -- Lucide Icon keyword
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL
+);
+
+-- Daily Challenges Table (one database-selected daily problem per calendar date)
+CREATE TABLE IF NOT EXISTS public.daily_challenges (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    challenge_date DATE UNIQUE NOT NULL,
+    problem_id UUID,
+    spotlight_label TEXT DEFAULT 'Daily Challenge' NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL
 );
 
 -- Problems Table (Upgraded with budgets, thresholds, passing criteria, and metadata)
@@ -152,6 +162,18 @@ CREATE TABLE IF NOT EXISTS public.session_rubrics_scores (
     UNIQUE (report_id, rubric_id)
 );
 
+-- User Activity Days Table (database-backed login streak source)
+CREATE TABLE IF NOT EXISTS public.user_activity_days (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES auth.users ON DELETE CASCADE NOT NULL,
+    activity_date DATE DEFAULT CURRENT_DATE NOT NULL,
+    login_count INTEGER DEFAULT 1 NOT NULL CHECK (login_count > 0),
+    first_seen_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
+    last_seen_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
+    metadata JSONB DEFAULT '{}'::jsonb NOT NULL,
+    UNIQUE (user_id, activity_date)
+);
+
 -- Schema evolution safeguards for existing Supabase projects.
 -- CREATE TABLE IF NOT EXISTS does not backfill columns into an existing table, so
 -- every additive field in this handbook is also declared here idempotently.
@@ -171,6 +193,40 @@ ALTER TABLE public.profiles ALTER COLUMN role SET DEFAULT 'candidate';
 ALTER TABLE public.profiles DROP CONSTRAINT IF EXISTS profiles_role_check;
 ALTER TABLE public.profiles
     ADD CONSTRAINT profiles_role_check CHECK (role IN ('candidate', 'interviewer'));
+
+ALTER TABLE public.daily_challenges
+    ADD COLUMN IF NOT EXISTS challenge_date DATE,
+    ADD COLUMN IF NOT EXISTS problem_id UUID,
+    ADD COLUMN IF NOT EXISTS spotlight_label TEXT DEFAULT 'Daily Challenge',
+    ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW();
+
+UPDATE public.daily_challenges
+SET
+    spotlight_label = COALESCE(spotlight_label, 'Daily Challenge'),
+    created_at = COALESCE(created_at, NOW()),
+    updated_at = COALESCE(updated_at, NOW());
+
+ALTER TABLE public.daily_challenges
+    ALTER COLUMN challenge_date SET NOT NULL,
+    ALTER COLUMN spotlight_label SET NOT NULL,
+    ALTER COLUMN created_at SET NOT NULL,
+    ALTER COLUMN updated_at SET NOT NULL;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname = 'daily_challenges_problem_id_fkey'
+          AND conrelid = 'public.daily_challenges'::regclass
+    ) THEN
+        ALTER TABLE public.daily_challenges
+            ADD CONSTRAINT daily_challenges_problem_id_fkey
+            FOREIGN KEY (problem_id) REFERENCES public.problems(id) ON DELETE SET NULL;
+    END IF;
+END;
+$$;
 
 ALTER TABLE public.problems
     ADD COLUMN IF NOT EXISTS category_id VARCHAR(50),
@@ -318,6 +374,66 @@ ALTER TABLE public.evaluation_reports
     ALTER COLUMN is_passing SET NOT NULL,
     ALTER COLUMN metadata SET NOT NULL;
 
+ALTER TABLE public.user_activity_days
+    ADD COLUMN IF NOT EXISTS user_id UUID,
+    ADD COLUMN IF NOT EXISTS activity_date DATE DEFAULT CURRENT_DATE,
+    ADD COLUMN IF NOT EXISTS login_count INTEGER DEFAULT 1,
+    ADD COLUMN IF NOT EXISTS first_seen_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    ADD COLUMN IF NOT EXISTS metadata JSONB DEFAULT '{}'::jsonb;
+
+UPDATE public.user_activity_days
+SET
+    activity_date = COALESCE(activity_date, CURRENT_DATE),
+    login_count = COALESCE(login_count, 1),
+    first_seen_at = COALESCE(first_seen_at, NOW()),
+    last_seen_at = COALESCE(last_seen_at, NOW()),
+    metadata = COALESCE(metadata, '{}'::jsonb);
+
+ALTER TABLE public.user_activity_days
+    ALTER COLUMN user_id SET NOT NULL,
+    ALTER COLUMN activity_date SET NOT NULL,
+    ALTER COLUMN login_count SET NOT NULL,
+    ALTER COLUMN first_seen_at SET NOT NULL,
+    ALTER COLUMN last_seen_at SET NOT NULL,
+    ALTER COLUMN metadata SET NOT NULL;
+
+ALTER TABLE public.user_activity_days DROP CONSTRAINT IF EXISTS user_activity_days_login_count_check;
+ALTER TABLE public.user_activity_days
+    ADD CONSTRAINT user_activity_days_login_count_check CHECK (login_count > 0);
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname = 'user_activity_days_user_id_fkey'
+          AND conrelid = 'public.user_activity_days'::regclass
+    ) THEN
+        ALTER TABLE public.user_activity_days
+            ADD CONSTRAINT user_activity_days_user_id_fkey
+            FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname = 'user_activity_days_user_id_activity_date_key'
+          AND conrelid = 'public.user_activity_days'::regclass
+    ) THEN
+        ALTER TABLE public.user_activity_days
+            ADD CONSTRAINT user_activity_days_user_id_activity_date_key
+            UNIQUE (user_id, activity_date);
+    END IF;
+END;
+$$;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_daily_challenges_challenge_date
+    ON public.daily_challenges(challenge_date);
+CREATE INDEX IF NOT EXISTS idx_daily_challenges_problem_id
+    ON public.daily_challenges(problem_id);
+CREATE INDEX IF NOT EXISTS idx_user_activity_days_user_date
+    ON public.user_activity_days(user_id, activity_date DESC);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_evaluation_reports_session_id
     ON public.evaluation_reports(session_id);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_profiles_username
@@ -338,6 +454,7 @@ CREATE INDEX IF NOT EXISTS idx_session_rubrics_scores_report_id ON public.sessio
 -- Enable Row Level Security (RLS) on all tables
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.categories ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.daily_challenges ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.problems ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.problem_versions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.challenge_rubrics ENABLE ROW LEVEL SECURITY;
@@ -345,6 +462,7 @@ ALTER TABLE public.interview_sessions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.agent_telemetry ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.evaluation_reports ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.session_rubrics_scores ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.user_activity_days ENABLE ROW LEVEL SECURITY;
 
 -- Role helper used by interviewer policies. SECURITY DEFINER prevents recursive
 -- profile RLS checks while still scoping the lookup to auth.uid().
@@ -375,6 +493,16 @@ CREATE POLICY "Categories are viewable by everyone" ON public.categories
 
 DROP POLICY IF EXISTS "Interviewers can manage categories" ON public.categories;
 CREATE POLICY "Interviewers can manage categories" ON public.categories
+    FOR ALL TO authenticated USING (public.is_interviewer())
+    WITH CHECK (public.is_interviewer());
+
+-- Daily Challenges Policies
+DROP POLICY IF EXISTS "Daily challenges are viewable by authenticated users" ON public.daily_challenges;
+CREATE POLICY "Daily challenges are viewable by authenticated users" ON public.daily_challenges
+    FOR SELECT TO authenticated USING (true);
+
+DROP POLICY IF EXISTS "Interviewers can manage daily challenges" ON public.daily_challenges;
+CREATE POLICY "Interviewers can manage daily challenges" ON public.daily_challenges
     FOR ALL TO authenticated USING (public.is_interviewer())
     WITH CHECK (public.is_interviewer());
 
@@ -486,6 +614,20 @@ CREATE POLICY "Candidates can insert rubric scores for their evaluation reports"
         )
     );
 
+-- User Activity Days Policies
+DROP POLICY IF EXISTS "Users can view their own activity days" ON public.user_activity_days;
+CREATE POLICY "Users can view their own activity days" ON public.user_activity_days
+    FOR SELECT TO authenticated USING (auth.uid() = user_id OR public.is_interviewer());
+
+DROP POLICY IF EXISTS "Users can insert their own activity days" ON public.user_activity_days;
+CREATE POLICY "Users can insert their own activity days" ON public.user_activity_days
+    FOR INSERT TO authenticated WITH CHECK (auth.uid() = user_id OR public.is_interviewer());
+
+DROP POLICY IF EXISTS "Users can update their own activity days" ON public.user_activity_days;
+CREATE POLICY "Users can update their own activity days" ON public.user_activity_days
+    FOR UPDATE TO authenticated USING (auth.uid() = user_id OR public.is_interviewer())
+    WITH CHECK (auth.uid() = user_id OR public.is_interviewer());
+
 -- ==========================================
 -- 3. Automatic Triggers & Helpers
 -- ==========================================
@@ -543,10 +685,51 @@ CREATE TRIGGER tr_profiles_updated_at
     BEFORE UPDATE ON public.profiles
     FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
 
+DROP TRIGGER IF EXISTS tr_daily_challenges_updated_at ON public.daily_challenges;
+CREATE TRIGGER tr_daily_challenges_updated_at
+    BEFORE UPDATE ON public.daily_challenges
+    FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+
 DROP TRIGGER IF EXISTS tr_problems_updated_at ON public.problems;
 CREATE TRIGGER tr_problems_updated_at
     BEFORE UPDATE ON public.problems
     FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+
+-- Authenticated users call this from the dashboard to persist login streak days.
+CREATE OR REPLACE FUNCTION public.record_user_login_day()
+RETURNS public.user_activity_days AS $$
+DECLARE
+    activity_row public.user_activity_days;
+BEGIN
+    IF auth.uid() IS NULL THEN
+        RAISE EXCEPTION 'Authentication required to record login activity.';
+    END IF;
+
+    INSERT INTO public.user_activity_days (
+        user_id,
+        activity_date,
+        login_count,
+        first_seen_at,
+        last_seen_at
+    )
+    VALUES (
+        auth.uid(),
+        CURRENT_DATE,
+        1,
+        NOW(),
+        NOW()
+    )
+    ON CONFLICT (user_id, activity_date) DO UPDATE
+    SET
+        login_count = public.user_activity_days.login_count + 1,
+        last_seen_at = NOW()
+    RETURNING * INTO activity_row;
+
+    RETURN activity_row;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+
+GRANT EXECUTE ON FUNCTION public.record_user_login_day() TO authenticated;
 
 -- Deferrable constraint trigger: each problem's rubric weights must sum to 1.00.
 CREATE OR REPLACE FUNCTION public.validate_challenge_rubric_weight_sum()
@@ -867,6 +1050,17 @@ SET category_id = EXCLUDED.category_id, title = EXCLUDED.title, description = EX
     max_recommended_runs = EXCLUDED.max_recommended_runs, max_token_budget = EXCLUDED.max_token_budget,
     max_cost_budget_usd = EXCLUDED.max_cost_budget_usd, passing_score_threshold = EXCLUDED.passing_score_threshold,
     passing_tests_ratio = EXCLUDED.passing_tests_ratio, passing_criteria = EXCLUDED.passing_criteria;
+
+-- Seed Daily Challenge rotation with a real database row for today's dashboard.
+INSERT INTO public.daily_challenges (challenge_date, problem_id, spotlight_label)
+VALUES
+(CURRENT_DATE, '00000000-0000-0000-0000-000000000010', 'Daily Backend Contract Drill'),
+(CURRENT_DATE + 1, '00000000-0000-0000-0000-000000000001', 'Daily Agentic Optimization Drill'),
+(CURRENT_DATE + 2, '00000000-0000-0000-0000-000000000003', 'Daily Prompt Defense Drill')
+ON CONFLICT (challenge_date) DO UPDATE
+SET problem_id = EXCLUDED.problem_id,
+    spotlight_label = EXCLUDED.spotlight_label,
+    updated_at = NOW();
 
 -- Seed Dynamic Rubrics
 -- 1. Matrix Optimizer

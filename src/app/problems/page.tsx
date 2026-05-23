@@ -1,29 +1,46 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Terminal,
-  Cpu,
   Search,
-  Filter,
   Clock,
-  ShieldCheck,
   Database,
   UploadCloud,
   ChevronRight,
   CheckCircle,
   AlertCircle,
-  FileCode,
-  Sparkles,
-  Zap,
   ArrowUpRight,
   LogOut,
   Activity
 } from "lucide-react";
+import AuthAwareHomeLink from "@/components/AuthAwareHomeLink";
 import { supabase } from "@/lib/supabase/client";
+
+const SUPABASE_CLIENT_TIMEOUT_MS = 3500;
+
+async function withClientTimeout<T>(
+  operation: PromiseLike<T>,
+  label: string,
+  timeoutMs = SUPABASE_CLIENT_TIMEOUT_MS
+): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
+  try {
+    return await Promise.race([
+      Promise.resolve(operation),
+      new Promise<T>((_, reject) => {
+        timeoutId = setTimeout(() => {
+          reject(new Error(`${label} timed out after ${timeoutMs}ms`));
+        }, timeoutMs);
+      })
+    ]);
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
+}
 
 interface Problem {
   id: string;
@@ -308,22 +325,29 @@ export default function ProblemsPage() {
 
   // Custom JSONL Suite Uploader State
   const [dragActive, setDragActive] = useState(false);
-  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [uploadStatus, setUploadStatus] = useState<"idle" | "uploading" | "success" | "error">("idle");
   const [uploadMessage, setUploadMessage] = useState("");
 
   useEffect(() => {
     async function loadUserAndProfile() {
       try {
-        const { data: { user } } = await supabase.auth.getUser();
+        const { data: { user } } = await withClientTimeout(
+          supabase.auth.getUser(),
+          "Supabase auth lookup",
+          2500
+        );
         if (user) {
           setUser(user);
           // Fetch profile details
-          const { data: profileData } = await supabase
-            .from("profiles")
-            .select("*")
-            .eq("id", user.id)
-            .single();
+          const { data: profileData } = await withClientTimeout(
+            supabase
+              .from("profiles")
+              .select("*")
+              .eq("id", user.id)
+              .single(),
+            "Supabase profile lookup",
+            2500
+          );
           if (profileData) {
             setProfile(profileData);
           }
@@ -354,10 +378,13 @@ export default function ProblemsPage() {
     async function fetchProblems() {
       try {
         setLoading(true);
-        const { data, error } = await supabase
-          .from("problems")
-          .select("*")
-          .order("created_at", { ascending: true });
+        const { data, error } = await withClientTimeout(
+          supabase
+            .from("problems")
+            .select("*")
+            .order("created_at", { ascending: true }),
+          "Supabase problem sync"
+        );
 
         if (error) throw error;
         if (data && data.length > 0) {
@@ -417,7 +444,6 @@ export default function ProblemsPage() {
       return;
     }
 
-    setUploadedFile(file);
     setUploadStatus("uploading");
     setUploadMessage("Parsing payload matrices and running structural code compile tests...");
 
@@ -432,22 +458,29 @@ export default function ProblemsPage() {
     try {
       setLoading(true);
       // Create a real session in Supabase if user is authenticated, otherwise use local demo session
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user } } = await withClientTimeout(
+        supabase.auth.getUser(),
+        "Supabase auth lookup",
+        2500
+      );
 
       const candidateId = user ? user.id : null;
 
-      const { data, error } = await supabase
-        .from("interview_sessions")
-        .insert({
-          candidate_id: candidateId,
-          problem_id: problem.id,
-          status: "active",
-          gce_instance_name: generateGceInstanceName(problem.slug),
-          gce_instance_zone: "us-central1-a",
-          started_at: new Date().toISOString()
-        })
-        .select()
-        .single();
+      const { data, error } = await withClientTimeout(
+        supabase
+          .from("interview_sessions")
+          .insert({
+            candidate_id: candidateId,
+            problem_id: problem.id,
+            status: "active",
+            gce_instance_name: generateGceInstanceName(problem.slug),
+            gce_instance_zone: "us-central1-a",
+            started_at: new Date().toISOString()
+          })
+          .select()
+          .single(),
+        "Supabase session creation"
+      );
 
       if (error) {
         console.warn("Could not insert session, routing in local demo sandbox mode...", error.message);
@@ -478,8 +511,8 @@ export default function ProblemsPage() {
 
       {/* Futuristic Navbar */}
       <header className="sticky top-0 z-50 border-b border-slate-800/80 bg-bg-dark/85 backdrop-blur-xl">
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <Link href="/" aria-label="AntiCode home" className="flex items-center gap-3 rounded-md transition-opacity hover:opacity-90">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
+          <AuthAwareHomeLink ariaLabel="AntiCode dashboard" className="flex items-center gap-3 rounded-md transition-opacity hover:opacity-90">
             <div className="relative flex items-center justify-center w-9 h-9 rounded-lg bg-bg-panel border border-agy-cyan/20 overflow-hidden shadow-[0_0_10px_rgba(0,240,255,0.15)]">
               <img src="/assets/anticode_logo.svg" className="w-full h-full object-cover" alt="AntiCode Logo" />
             </div>
@@ -487,17 +520,17 @@ export default function ProblemsPage() {
               <span className="font-extrabold tracking-wider text-sm block">ANTICODE</span>
               <span className="text-[9px] font-mono text-agy-green block uppercase tracking-widest -mt-0.5">ADMIN PORTAL</span>
             </div>
-          </Link>
+          </AuthAwareHomeLink>
 
-          <div className="flex items-center gap-6">
-            <div className="flex items-center gap-1.5 font-mono text-xs text-text-muted bg-bg-panel/40 border border-slate-800/50 px-3 py-1.5 rounded-full">
+          <div className="flex items-center gap-2 sm:gap-4 lg:gap-6 min-w-0">
+            <div className="hidden lg:flex items-center gap-1.5 font-mono text-xs text-text-muted bg-bg-panel/40 border border-slate-800/50 px-3 py-1.5 rounded-full">
               <div className="w-1.5 h-1.5 rounded-full bg-agy-green animate-pulse" />
               <span>GCP CLUSTER ACTIVE</span>
             </div>
 
             {/* Profile / Guest HUD state */}
             {user ? (
-              <div className="flex items-center gap-3 border-l border-slate-800/80 pl-6 h-8">
+              <div className="flex items-center gap-2 sm:gap-3 sm:border-l border-slate-800/80 sm:pl-4 lg:pl-6 h-8 min-w-0">
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-mono font-bold border shadow-[0_0_10px_rgba(0,0,0,0.15)] ${
                   profile?.role && profile.role.toLowerCase().includes("interviewer")
                     ? "bg-agy-violet/10 border-agy-violet/35 text-agy-violet shadow-[0_0_10px_rgba(157,78,221,0.2)]"
@@ -515,7 +548,7 @@ export default function ProblemsPage() {
                 </div>
               </div>
             ) : (
-              <div className="flex items-center gap-3 border-l border-slate-800/80 pl-6 h-8">
+              <div className="flex items-center gap-2 sm:gap-3 sm:border-l border-slate-800/80 sm:pl-4 lg:pl-6 h-8 min-w-0">
                 <div className="w-8 h-8 rounded-full bg-slate-800/60 border border-slate-700 flex items-center justify-center text-[9px] font-mono text-text-muted font-bold">
                   GS
                 </div>
@@ -529,7 +562,7 @@ export default function ProblemsPage() {
             <button
               type="button"
               onClick={handleLogout}
-              className="flex items-center gap-1.5 font-mono text-xs text-text-muted hover:text-text-red transition-colors cursor-pointer border-l border-slate-800/80 pl-6 h-8"
+              className="flex items-center gap-1.5 font-mono text-xs text-text-muted hover:text-text-red transition-colors cursor-pointer sm:border-l border-slate-800/80 sm:pl-4 lg:pl-6 h-8 shrink-0"
             >
               <LogOut className="w-3.5 h-3.5" />
               <span>EXIT</span>

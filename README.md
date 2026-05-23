@@ -1,10 +1,10 @@
-# 🌌 YeetCode: Futuristic AI-Agentic Technical Interviewing Simulator
+# 🌌 AntiCode: Futuristic AI-Agentic Technical Interviewing Simulator
 
-Welcome to **YeetCode**, a premium, high-fidelity AI technical interview and coding simulation platform. YeetCode integrates state-of-the-art interactive coding sandbox environments, live Google Gemini 3.5 evaluator integrations, real-time telemetry streaming, and role-based administration panels to deliver a world-class workspace cockpit for candidates and interviewers alike.
+Welcome to **AntiCode**, a premium, high-fidelity AI technical interview and coding simulation platform. AntiCode integrates state-of-the-art interactive coding sandbox environments, live Google Gemini 3.5 evaluator integrations, real-time telemetry streaming, and role-based administration panels to deliver a world-class workspace cockpit for candidates and interviewers alike.
 
 ```
 ====================================================================
-  🌌 Y E E T C O D E   A C T I V E   C O C K P I T   S Y S T E M S 🌌
+  🌌 A N T I C O D E   A C T I V E   C O C K P I T   S Y S T E M S 🌌
 ====================================================================
 ```
 
@@ -23,20 +23,20 @@ Welcome to **YeetCode**, a premium, high-fidelity AI technical interview and cod
 
 ## 🔑 Role-Based Access & Seeded Test Accounts
 
-YeetCode supports strict role-based access controls (RBAC) to differentiate between standard candidate practice runs and live interviewer observation environments.
+AntiCode supports strict role-based access controls (RBAC) to differentiate between standard candidate practice runs and live interviewer observation environments.
 
 We have programmatically seeded two primary real test users inside our Supabase database to make evaluation and sandbox walkthroughs instantaneous.
 
 | Secure Identity Email | Access Password | Profile Name | Access Role | Workspace Privileges & Capabilities |
 | :--- | :--- | :--- | :--- | :--- |
-| `candidate@yeetcode.com` | `yeetcode123` | Clara Candidate | **Candidate** | **Standard Cockpit Access**: Write code, run tests, deploy the autonomous Antigravity solver, and submit solutions for Gemini scoring. |
-| `interviewer@yeetcode.com` | `yeetcode123` | Ian Interviewer | **Interviewer** | **Escalated Admin Access**: Unlocks the live **Interviewer System Control Deck** with real-time observation and intervention parameters. |
+| `candidate@anticode.com` | `anticode123` | Clara Candidate | **Candidate** | **Standard Cockpit Access**: Write code, run tests, deploy the autonomous Antigravity solver, and submit solutions for Gemini scoring. |
+| `interviewer@anticode.com` | `anticode123` | Ian Interviewer | **Interviewer** | **Escalated Admin Access**: Unlocks the live **Interviewer System Control Deck** with real-time observation and intervention parameters. |
 
 ---
 
 ## 🌌 Escalated Interviewer System Control Deck
 
-When logged in as an **Interviewer** (e.g., via `interviewer@yeetcode.com` or selecting the Interviewer Demo Bypass), the workspace cockpit dynamically injects a premium **Interviewer System Control Deck** widget directly into the sidebar panel.
+When logged in as an **Interviewer** (e.g., via `interviewer@anticode.com` or selecting the Interviewer Demo Bypass), the workspace cockpit dynamically injects a premium **Interviewer System Control Deck** widget directly into the sidebar panel.
 
 This cockpit grants interviewers high-level, escalated administrative capabilities during live interviews:
 

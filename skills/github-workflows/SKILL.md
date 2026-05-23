@@ -3,9 +3,9 @@ name: github-workflows
 description: Guidelines for secure GitHub repository configuration, secret leak prevention, git hook installations, and workflow integrations.
 ---
 
-# YeetCode Secure Git & GitHub Workflows
+# AntiCode Secure Git & GitHub Workflows
 
-This skill governs the security policies, secret scanning heuristics, pre-commit validation hook installations, and GitHub Actions settings of the YeetCode codebase.
+This skill governs the security policies, secret scanning heuristics, pre-commit validation hook installations, and GitHub Actions settings of the AntiCode codebase.
 
 ## 1. Secret Leak Prevention System
 To protect sensitive credentials (such as Google Cloud private keys, Vercel tokens, or Supabase service keys), we implement multi-layer secret protection:

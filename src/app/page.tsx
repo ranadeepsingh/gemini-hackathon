@@ -2,19 +2,81 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   Terminal, 
   Cpu, 
   Play, 
-  Zap, 
   ShieldAlert, 
   Layers, 
   FileCode, 
   CheckCircle, 
-  Sparkles
+  Sparkles,
+  MessageSquareQuote,
+  ExternalLink,
+  BadgeCheck,
+  BrainCircuit
 } from "lucide-react";
+import AuthAwareHomeLink from "@/components/AuthAwareHomeLink";
 import MouseSpotlight from "@/components/MouseSpotlight";
+
+const aiPerspectiveCards = [
+  {
+    name: "Andrej Karpathy",
+    role: "AI researcher, OpenAI co-founder",
+    quote: "The hottest new programming language is English",
+    takeaway: "Natural-language precision is becoming a core engineering surface, not a soft skill.",
+    image: "/assets/ai-voices/andrej-karpathy.png",
+    quoteSource: "https://quoteinvestigator.com/2024/10/20/hottest-program/",
+    quoteSourceLabel: "Quote Investigator",
+    photoSource: "https://commons.wikimedia.org/wiki/File:Andrej_Karpathy,_OpenAI_(cropped).png",
+    photoCredit: "Gladwin Analytics, CC BY 3.0",
+    accent: {
+      panel: "hover:border-agy-cyan/50",
+      glow: "from-agy-cyan/20",
+      badge: "border-agy-cyan/25 bg-agy-cyan/10 text-agy-cyan",
+      icon: "text-agy-cyan",
+      image: "border-agy-cyan/30 shadow-[0_0_18px_rgba(0,240,255,0.18)]"
+    }
+  },
+  {
+    name: "Jensen Huang",
+    role: "Founder and CEO, NVIDIA",
+    quote: "the programming language is human: everybody in the world is now a programmer",
+    takeaway: "Prompt fluency changes who can command compute, so interviews need to measure intent, judgment, and verification.",
+    image: "/assets/ai-voices/jensen-huang.jpg",
+    quoteSource: "https://blogs.nvidia.com/blog/world-governments-summit/",
+    quoteSourceLabel: "NVIDIA Blog",
+    photoSource: "https://commons.wikimedia.org/wiki/File:Jensen_Huang_20231109.jpg",
+    photoCredit: "Taiwan Presidential Office, CC BY 2.0",
+    accent: {
+      panel: "hover:border-agy-green/50",
+      glow: "from-agy-green/20",
+      badge: "border-agy-green/25 bg-agy-green/10 text-agy-green",
+      icon: "text-agy-green",
+      image: "border-agy-green/30 shadow-[0_0_18px_rgba(0,255,102,0.16)]"
+    }
+  },
+  {
+    name: "Demis Hassabis",
+    role: "CEO and co-founder, Google DeepMind",
+    quote: "AI systems and AI algorithms are quite a good match, a good description language, for biology.",
+    takeaway: "The next engineering bar is translating messy domains into descriptions that models can execute and humans can audit.",
+    image: "/assets/ai-voices/demis-hassabis.jpg",
+    quoteSource: "https://www.nobelprize.org/prizes/chemistry/2024/hassabis/1924974-transcript-from-an-interview-with-demis-hassabis/",
+    quoteSourceLabel: "Nobel Prize interview",
+    photoSource: "https://commons.wikimedia.org/wiki/File:Demis_Hassabis_Royal_Society_(3x4_cropped).jpg",
+    photoCredit: "Duncan.Hull, CC BY-SA 4.0",
+    accent: {
+      panel: "hover:border-agy-violet/50",
+      glow: "from-agy-violet/20",
+      badge: "border-agy-violet/25 bg-agy-violet/10 text-agy-violet",
+      icon: "text-agy-violet",
+      image: "border-agy-violet/30 shadow-[0_0_18px_rgba(139,92,246,0.2)]"
+    }
+  }
+];
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<"agentic" | "skill" | "prompt">("agentic");
@@ -51,14 +113,14 @@ export default function Home() {
       {/* Header */}
       <header className="sticky top-0 w-full z-40 bg-bg-dark/80 backdrop-blur-md border-b border-border-subtle">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <Link href="/" aria-label="AntiCode home" className="flex items-center gap-3 rounded-md transition-opacity hover:opacity-90">
+          <AuthAwareHomeLink ariaLabel="AntiCode home or dashboard" className="flex items-center gap-3 rounded-md transition-opacity hover:opacity-90">
             <div className="relative flex items-center justify-center w-9 h-9 rounded-lg bg-bg-panel border border-agy-cyan/20 overflow-hidden shadow-[0_0_10px_rgba(0,240,255,0.15)]">
               <img src="/assets/anticode_logo.svg" className="w-full h-full object-cover" alt="AntiCode Logo" />
             </div>
             <span className="font-mono text-xl font-extrabold tracking-widest text-text-main">
               ANTI<span className="text-agy-green glow-text-green">CODE</span>
             </span>
-          </Link>
+          </AuthAwareHomeLink>
           <div className="flex items-center gap-4">
             <span className="hidden sm:flex items-center gap-2 text-xs font-mono text-text-muted bg-bg-panel/60 px-3 py-1.5 rounded-full border border-border-subtle">
               <span className="w-2 h-2 rounded-full bg-agy-green animate-ping" />
@@ -287,6 +349,94 @@ export default function Home() {
 
           </div>
         </div>
+
+        {/* Grounded voices behind the shift to natural-language programming */}
+        <section className="mt-28">
+          <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6 mb-10">
+            <div className="max-w-2xl">
+              <div className="inline-flex items-center gap-2 bg-agy-cyan/10 text-agy-cyan px-3 py-1 rounded-full text-xs font-mono border border-agy-cyan/20 w-fit mb-4">
+                <BrainCircuit className="w-3.5 h-3.5" />
+                VERIFIED AI LEADER SIGNALS
+              </div>
+              <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight">
+                English is becoming the new command layer.
+              </h2>
+              <p className="text-text-muted leading-relaxed mt-3">
+                The platform tests what these quotes point toward: clear prompts, reliable agent steering, and evidence-backed verification under real engineering pressure.
+              </p>
+            </div>
+
+            <div className="hidden lg:flex items-center gap-3 font-mono text-[10px] text-text-muted border border-border-subtle bg-bg-panel/50 rounded-lg px-4 py-3">
+              <BadgeCheck className="w-4 h-4 text-agy-green" />
+              QUOTES AND HEADSHOTS LINKED TO ORIGINAL SOURCES
+            </div>
+          </div>
+
+          <div className="grid lg:grid-cols-3 gap-5">
+            {aiPerspectiveCards.map((card) => (
+              <motion.article
+                key={card.name}
+                whileHover={{ y: -4 }}
+                transition={{ duration: 0.2 }}
+                className={`group relative overflow-hidden rounded-lg border border-border-subtle bg-bg-panel/70 p-5 backdrop-blur-xl transition-all duration-300 ${card.accent.panel}`}
+              >
+                <div className={`absolute inset-x-0 top-0 h-24 bg-gradient-to-b ${card.accent.glow} to-transparent opacity-70 pointer-events-none`} />
+                <div className="relative flex items-start gap-4">
+                  <div className={`relative h-24 w-24 shrink-0 overflow-hidden rounded-lg border bg-bg-dark ${card.accent.image}`}>
+                    <Image
+                      src={card.image}
+                      alt={`${card.name} headshot`}
+                      fill
+                      sizes="96px"
+                      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className={`inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-[10px] font-mono font-bold tracking-wider ${card.accent.badge}`}>
+                      <BadgeCheck className="h-3 w-3" />
+                      ACTUAL QUOTE
+                    </div>
+                    <h3 className="mt-3 text-xl font-extrabold tracking-tight">{card.name}</h3>
+                    <p className="mt-1 text-xs font-mono uppercase tracking-wider text-text-muted">{card.role}</p>
+                  </div>
+                </div>
+
+                <div className="relative mt-6 flex min-h-[210px] flex-col justify-between gap-6">
+                  <div>
+                    <MessageSquareQuote className={`mb-4 h-7 w-7 ${card.accent.icon}`} />
+                    <blockquote className="text-xl font-semibold leading-snug text-text-main">
+                      {`"${card.quote}"`}
+                    </blockquote>
+                    <p className="mt-4 text-sm leading-relaxed text-text-muted">{card.takeaway}</p>
+                  </div>
+
+                  <div className="border-t border-border-subtle/70 pt-4 text-[10px] font-mono uppercase tracking-wider text-text-muted">
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                      <a
+                        href={card.quoteSource}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1.5 rounded-md text-text-main transition-colors hover:text-agy-cyan"
+                      >
+                        Quote: {card.quoteSourceLabel}
+                        <ExternalLink className="h-3 w-3" />
+                      </a>
+                      <a
+                        href={card.photoSource}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1.5 rounded-md transition-colors hover:text-text-main"
+                      >
+                        Photo: {card.photoCredit}
+                        <ExternalLink className="h-3 w-3" />
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              </motion.article>
+            ))}
+          </div>
+        </section>
 
         {/* Tabbed Interactive Section (Deep Dive into the 3 Interview Modes) */}
         <section className="mt-32">

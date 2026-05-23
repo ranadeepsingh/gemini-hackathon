@@ -53,7 +53,7 @@ def print_status():
 
     print(f"""{cyan}[antigravity status] Secure VM Sandbox Integrity Report{nc}
 ------------------------------------------------------
-Container Node ID  : yeetcode-gce-node-us-central-4a
+Container Node ID  : anticode-gce-node-us-central-4a
 Terminal Port      : 8787 (TLS Active)
 Operating System   : Ubuntu 22.04 LTS (Security Hardened)
 Active Problem     : {green}{problem_slug}{nc}

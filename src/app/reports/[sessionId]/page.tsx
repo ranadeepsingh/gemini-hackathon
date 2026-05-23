@@ -1,27 +1,18 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import Link from "next/link";
 import { useRouter, useSearchParams, useParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { 
   Trophy, 
   Cpu, 
-  TrendingUp, 
   CheckCircle, 
-  Layers, 
-  DollarSign, 
-  Clock, 
-  ShieldCheck, 
-  Sparkles, 
-  Zap, 
-  ArrowRight,
   Printer,
   Share2,
   Lock,
-  ChevronRight,
-  Code
+  ChevronRight
 } from "lucide-react";
+import AuthAwareHomeLink from "@/components/AuthAwareHomeLink";
 import { supabase } from "@/lib/supabase/client";
 
 interface Report {
@@ -34,6 +25,8 @@ interface Report {
   test_cases_total: number;
   created_at: string;
 }
+
+type GradePayload = Partial<Record<keyof Report, unknown>>;
 
 // Fallback high-fidelity reports based on problem slug
 const FALLBACK_REPORTS: Record<string, Report> = {
@@ -69,49 +62,140 @@ const FALLBACK_REPORTS: Record<string, Report> = {
   }
 };
 
+function getFallbackReport(problemSlug: string) {
+  return FALLBACK_REPORTS[problemSlug] || FALLBACK_REPORTS["agentic-matrix-optimizer"];
+}
+
+function clampScore(value: unknown, fallback: number) {
+  const parsed = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.max(0, Math.min(100, Math.round(parsed)));
+}
+
+function decodeMaybe(value: string) {
+  let current = value;
+  for (let index = 0; index < 3; index += 1) {
+    try {
+      const decoded = decodeURIComponent(current);
+      if (decoded === current) break;
+      current = decoded;
+    } catch {
+      break;
+    }
+  }
+  return current;
+}
+
+function normalizeGradeReport(payload: GradePayload, problemSlug: string): Report {
+  const fallback = getFallbackReport(problemSlug);
+  const aggregate = clampScore(payload.score_aggregate, fallback.score_aggregate);
+
+  return {
+    score_agentic_flow: clampScore(payload.score_agentic_flow, aggregate),
+    score_skill_verification: clampScore(payload.score_skill_verification, aggregate),
+    score_prompt_engineering: clampScore(payload.score_prompt_engineering, aggregate),
+    score_aggregate: aggregate,
+    summary_review: typeof payload.summary_review === "string"
+      ? decodeMaybe(payload.summary_review)
+      : fallback.summary_review,
+    test_cases_passed: typeof payload.test_cases_passed === "number"
+      ? Math.max(0, Math.round(payload.test_cases_passed))
+      : aggregate >= 70 ? fallback.test_cases_total : 0,
+    test_cases_total: typeof payload.test_cases_total === "number"
+      ? Math.max(1, Math.round(payload.test_cases_total))
+      : fallback.test_cases_total,
+    created_at: typeof payload.created_at === "string" ? payload.created_at : new Date().toISOString()
+  };
+}
+
+function parseGradeParam(gradeParam: string | null, problemSlug: string): Report | null {
+  if (!gradeParam) return null;
+
+  const candidates = [gradeParam];
+  let decoded = gradeParam;
+  for (let index = 0; index < 3; index += 1) {
+    decoded = decodeMaybe(decoded);
+    if (candidates.includes(decoded)) break;
+    candidates.push(decoded);
+  }
+
+  for (const candidate of candidates) {
+    try {
+      const parsed = JSON.parse(candidate) as GradePayload;
+      if (parsed && typeof parsed === "object") {
+        return normalizeGradeReport(parsed, problemSlug);
+      }
+    } catch {
+      // Try the next decoded candidate.
+    }
+  }
+
+  return null;
+}
+
+function withClientTimeout<T>(operation: PromiseLike<T>, label: string, timeoutMs = 3500): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timeoutId = window.setTimeout(() => {
+      reject(new Error(`${label} timed out after ${timeoutMs}ms`));
+    }, timeoutMs);
+
+    Promise.resolve(operation).then(
+      (value) => {
+        window.clearTimeout(timeoutId);
+        resolve(value);
+      },
+      (error) => {
+        window.clearTimeout(timeoutId);
+        reject(error);
+      }
+    );
+  });
+}
+
 function ReportDetails() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const params = useParams();
   const sessionId = params.sessionId as string;
   const problemSlug = searchParams.get("problem") || "agentic-matrix-optimizer";
+  const gradeParam = searchParams.get("grade");
+  const urlGradeReport = parseGradeParam(gradeParam, problemSlug);
 
-  const [report, setReport] = useState<Report>(FALLBACK_REPORTS[problemSlug] || FALLBACK_REPORTS["agentic-matrix-optimizer"]);
-  const [loading, setLoading] = useState(true);
-
+  const [report, setReport] = useState<Report>(urlGradeReport || getFallbackReport(problemSlug));
   useEffect(() => {
     async function fetchReport() {
+      const gradeReport = parseGradeParam(gradeParam, problemSlug);
       try {
-        setLoading(true);
         if (sessionId === "demo-report-id") {
-          setReport(FALLBACK_REPORTS[problemSlug] || FALLBACK_REPORTS["agentic-matrix-optimizer"]);
+          setReport(gradeReport || getFallbackReport(problemSlug));
           return;
         }
 
         // Fetch from Supabase
-        const { data, error } = await supabase
-          .from("evaluation_reports")
-          .select("*")
-          .eq("session_id", sessionId)
-          .maybeSingle();
+        const { data, error } = await withClientTimeout(
+          supabase
+            .from("evaluation_reports")
+            .select("*")
+            .eq("session_id", sessionId)
+            .maybeSingle(),
+          "Evaluation report lookup"
+        );
 
         if (error) throw error;
         if (data) {
           setReport(data);
         } else {
           // If no report in DB, use realistic fallback matching current challenge
-          setReport(FALLBACK_REPORTS[problemSlug] || FALLBACK_REPORTS["agentic-matrix-optimizer"]);
+          setReport(gradeReport || getFallbackReport(problemSlug));
         }
       } catch (err) {
         const errMsg = err instanceof Error ? err.message : String(err);
         console.warn("Supabase fetch failed, utilizing robust mock evaluation fallback states.", errMsg);
-        setReport(FALLBACK_REPORTS[problemSlug] || FALLBACK_REPORTS["agentic-matrix-optimizer"]);
-      } finally {
-        setLoading(false);
+        setReport(gradeReport || getFallbackReport(problemSlug));
       }
     }
     fetchReport();
-  }, [sessionId, problemSlug]);
+  }, [sessionId, problemSlug, gradeParam]);
 
   // Math coordinates helper for the custom equilateral 3-Axis SVG Radar Skill chart
   // Center is at (150, 150), radius 100
@@ -147,6 +231,14 @@ function ReportDetails() {
 
   const getGradeTheme = () => {
     const score = report.score_aggregate;
+    if (score < 70) return {
+      border: "border-text-red/35",
+      shadow: "shadow-[0_0_35px_rgba(248,113,113,0.12)]",
+      gradient: "from-transparent via-text-red/35 to-transparent",
+      text: "text-text-red",
+      bg: "bg-text-red/5",
+      stroke: "stroke-text-red"
+    };
     if (score >= 95) return {
       border: "border-agy-violet/30",
       shadow: "shadow-[0_0_35px_rgba(139,92,246,0.12)]",
@@ -173,6 +265,14 @@ function ReportDetails() {
     };
   };
   const theme = getGradeTheme();
+  const isPassing = report.score_aggregate >= 70;
+  const radarGlowColor = report.score_aggregate < 70
+    ? "#f87171"
+    : report.score_aggregate >= 95
+      ? "#8b5cf6"
+      : report.score_aggregate >= 91
+        ? "#00ff66"
+        : "#00f0ff";
 
   return (
     <div className="min-h-screen bg-bg-dark text-white relative pb-16 overflow-x-hidden print:p-0 print:bg-white print:text-black">
@@ -237,7 +337,7 @@ function ReportDetails() {
         >
           <div className="flex items-center gap-2.5">
             <CheckCircle className="w-4 h-4 text-agy-green animate-pulse" />
-            <span>INTELLIGENT RUN PROOFS REGISTERED SECURELY ON BLOCKPLAIN</span>
+            <span>INTELLIGENT RUN PROOFS REGISTERED SECURELY ON BLOCKCHAIN</span>
           </div>
           <span className="opacity-60 hidden md:block">TX: {sessionId.substring(0, 14)}...</span>
         </motion.div>
@@ -245,12 +345,12 @@ function ReportDetails() {
         {/* Certificate Scorecard Header Card */}
         <div className="text-center md:text-left flex flex-col md:flex-row md:items-center justify-between gap-6 pb-6 border-b border-slate-800/80 print:border-slate-200">
           <div className="flex flex-col md:flex-row items-center md:items-start gap-4">
-            <Link href="/" aria-label="AntiCode home" className="w-12 h-12 rounded-xl border border-agy-cyan/20 bg-bg-panel flex items-center justify-center overflow-hidden shrink-0 shadow-[0_0_15px_rgba(0,240,255,0.2)] print:border-slate-300 transition-transform hover:scale-105">
+            <AuthAwareHomeLink ariaLabel="AntiCode dashboard" className="w-12 h-12 rounded-xl border border-agy-cyan/20 bg-bg-panel flex items-center justify-center overflow-hidden shrink-0 shadow-[0_0_15px_rgba(0,240,255,0.2)] print:border-slate-300 transition-transform hover:scale-105">
               <img src="/assets/anticode_logo.svg" className="w-full h-full object-cover" alt="AntiCode Logo" />
-            </Link>
+            </AuthAwareHomeLink>
             <div>
               <span className="font-mono text-xs text-agy-green block uppercase tracking-widest font-semibold print:text-slate-500">
-                COMPLETION CERTIFICATE & REPORT
+                {isPassing ? "ANTICODE COMPLETION CERTIFICATE & REPORT" : "ANTICODE EVALUATION REPORT"}
               </span>
               <h1 className="text-3xl font-extrabold tracking-tight mt-1 print:text-black">
                 Google Antigravity Developer Profile
@@ -332,8 +432,12 @@ function ReportDetails() {
             </div>
 
             <div className={`mt-6 flex items-center gap-1.5 ${theme.bg} border ${theme.border} px-3.5 py-1.5 rounded-full font-mono text-[10px] ${theme.text} font-bold uppercase tracking-wider print:border-slate-300 print:text-slate-800`}>
-              <Trophy className="w-3.5 h-3.5 animate-bounce print:hidden" />
-              <span>GOOGLE VENTURES PASSED</span>
+              {isPassing ? (
+                <Trophy className="w-3.5 h-3.5 animate-bounce print:hidden" />
+              ) : (
+                <Lock className="w-3.5 h-3.5 print:hidden" />
+              )}
+              <span>{isPassing ? "GOOGLE VENTURES PASSED" : "REVIEW REQUIRED"}</span>
             </div>
 
             {/* Cryptographic Verification Seal badge in sidebar */}
@@ -359,7 +463,7 @@ function ReportDetails() {
             <svg className="w-72 h-72" viewBox="0 0 300 300">
               <defs>
                 <radialGradient id="radarGlow" cx="50%" cy="50%" r="50%">
-                  <stop offset="0%" stopColor={report.score_aggregate >= 95 ? "#8b5cf6" : report.score_aggregate >= 91 ? "#00ff66" : "#00f0ff"} stopOpacity="0.18" />
+                  <stop offset="0%" stopColor={radarGlowColor} stopOpacity="0.18" />
                   <stop offset="100%" stopColor="#000000" stopOpacity="0" />
                 </radialGradient>
               </defs>
@@ -419,7 +523,7 @@ function ReportDetails() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5 font-mono text-xs text-text-muted print-certificate-grid">
           <div className="bg-bg-panel/20 border border-slate-800/60 p-4 rounded-xl flex justify-between items-center print-black-border">
             <span className="uppercase text-[10px]">TEST FIXTURES PASSED</span>
-            <span className="font-bold text-agy-green text-sm print:text-slate-800">
+            <span className={`font-bold text-sm print:text-slate-800 ${isPassing ? "text-agy-green" : "text-text-red"}`}>
               {report.test_cases_passed} / {report.test_cases_total}
             </span>
           </div>

@@ -3,9 +3,9 @@ name: supabase-db
 description: Complete guide to Supabase integration, relational tables schema, Row Level Security (RLS) policies, sign-up triggers, and realtime synchronizations.
 ---
 
-# YeetCode Supabase Database Architecture
+# AntiCode Supabase Database Architecture
 
-This skill governs the database schemas, access control rules, and real-time streaming pipelines of the YeetCode platform.
+This skill governs the database schemas, access control rules, and real-time streaming pipelines of the AntiCode platform.
 
 ## 1. Database Table Schema (`supabase/schema.sql`)
 The complete schema is maintained in [supabase/schema.sql](file:///Users/rana-ms-work/Documents/gemini-hackathon/supabase/schema.sql). The database comprises the following tables:
