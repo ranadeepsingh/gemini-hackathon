@@ -429,6 +429,42 @@ function isReadOnlyFile(filePath: string): boolean {
   return lower === "challenge.md" || lower.endsWith("/challenge.md");
 }
 
+function extractFailedTestDetails(rawText: string): string[] {
+  const outputLines = rawText.split("\n").map(line => line.trimEnd());
+  const failures: string[] = [];
+
+  for (let index = 0; index < outputLines.length; index += 1) {
+    const header = outputLines[index].trim();
+    if (!/^(FAIL|ERROR):\s+/.test(header)) continue;
+
+    const block: string[] = [];
+    for (let nextIndex = index + 1; nextIndex < outputLines.length; nextIndex += 1) {
+      const line = outputLines[nextIndex].trim();
+      if (/^(FAIL|ERROR):\s+/.test(line) || /^Ran\s+\d+\s+tests?/i.test(line) || /^FAILED\s+/i.test(line)) break;
+      if (!line || /^[-=]{5,}$/.test(line) || line === "Traceback (most recent call last):") continue;
+      block.push(line);
+    }
+
+    const location = block.find(line => line.startsWith("File "));
+    const reason = [...block].reverse().find(line => (
+      /(?:AssertionError|Error|Exception|TypeError|ValueError):/.test(line) ||
+      line.includes(" != ") ||
+      line.includes(" was not ") ||
+      line.includes(" failed")
+    )) || block[block.length - 1];
+
+    failures.push([header, location, reason].filter(Boolean).join("\n"));
+  }
+
+  const pytestFailures = outputLines
+    .map(line => line.trim())
+    .filter(line => /^FAILED\s+/.test(line));
+
+  return failures.length > 0
+    ? failures
+    : pytestFailures.map(line => line.replace(/^FAILED\s+/, "FAILED: "));
+}
+
 function parseTestRunResult(stdout: string, stderr: string, exitCode?: number): TestPanelState {
   const rawText = stripAnsiCodes(`${stdout}\n${stderr}`);
   const lines = rawText
@@ -443,9 +479,7 @@ function parseTestRunResult(stdout: string, stderr: string, exitCode?: number): 
   const failures = failureMatch ? Number(failureMatch[1]) : 0;
   const errors = errorMatch ? Number(errorMatch[1]) : 0;
   const explicitFailedCount = failures + errors;
-  const failedTests = lines
-    .filter(line => /^(FAIL|ERROR):\s+/.test(line) || /^FAILED\s+/.test(line))
-    .map(line => line.replace(/^FAILED\s+/, "FAILED: "));
+  const failedTests = extractFailedTestDetails(rawText);
 
   const inferredTotal = total || (exitCode === 0 ? 1 : Math.max(1, failedTests.length));
   const failedCount = Math.max(explicitFailedCount, failedTests.length, exitCode === 0 ? 0 : 1);
@@ -1997,7 +2031,7 @@ function WorkspaceCockpit() {
                       ) : (
                         <div className="space-y-2">
                           {testPanel.failedTests.map((testName, index) => (
-                            <div key={`${testName}-${index}`} className="rounded-lg border border-text-red/20 bg-bg-dark/70 p-2.5 text-text-red leading-relaxed">
+                            <div key={`${testName}-${index}`} className="whitespace-pre-wrap rounded-lg border border-text-red/20 bg-bg-dark/70 p-2.5 text-text-red leading-relaxed">
                               {testName}
                             </div>
                           ))}
