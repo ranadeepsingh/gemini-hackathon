@@ -10,12 +10,7 @@ import {
   AlertTriangle,
   Activity,
   Folder,
-  Video,
-  Mic,
-  MicOff,
-  VideoOff,
   Eye,
-  Users,
   TrendingUp,
   Layers,
   FileCode,
@@ -208,7 +203,7 @@ const LOCAL_FALLBACK_RUBRICS: Record<string, WorkspaceRubric[]> = {
   "prompt-adversarial-defense": [
     { metric_key: "jailbreak_defense", metric_label: "Jailbreak Suite Defense Rate", weight: 0.40, description: "Deterministic proportion of adversarial test suites successfully blocked (Grandma exploit, roleplay overlays, etc.)." },
     { metric_key: "input_sanitization", metric_label: "Preprocessing Sanitization Filters", weight: 0.20, description: "Verifies defensive code contains explicit regex rules to scrub hex or base64 injection patterns." },
-    { metric_key: "prompt_defensiveness", metric_label: "Defensive Prompt Layout Strength", weight: 0.20, description: "Consensus grading of text instructions protecting developer API tokens and systemic boundaries." },
+    { metric_key: "prompt_defensiveness", metric_label: "Defensive Prompt Layout Strength", weight: 0.20, description: "LLM grading of text instructions protecting developer API tokens and systemic boundaries." },
     { metric_key: "interviewer_score", metric_label: "Threat Modeling Maturity", weight: 0.20, description: "Evaluation of candidate threat vector explanations and defensive prompt structuring during workspace trials." }
   ],
   "agentic-dependency-resolver": [
@@ -220,14 +215,14 @@ const LOCAL_FALLBACK_RUBRICS: Record<string, WorkspaceRubric[]> = {
   "agentic-anomaly-detector": [
     { metric_key: "leak_remediation", metric_label: "Memory Pool Leak Remediation", weight: 0.40, description: "Deterministic check that heap memory limits remain strictly below 50MB under 1000 event runs." },
     { metric_key: "resource_management", metric_label: "Explicit Resource Tracking", weight: 0.20, description: "Code scanner check verifying unclosed socket handles are caught and garbage collection triggers are executed." },
-    { metric_key: "daemon_robustness", metric_label: "Daemon Multi-threading Safety", weight: 0.20, description: "Consensus review of background daemon durability, infinite loop defenses, and deadlock mitigations." },
+    { metric_key: "daemon_robustness", metric_label: "Daemon Multi-threading Safety", weight: 0.20, description: "LLM review of background daemon durability, infinite loop defenses, and deadlock mitigations." },
     { metric_key: "system_knowledge", metric_label: "Memory Analysis Proficiency", weight: 0.20, description: "Evaluation of candidate knowledge of heap growth diagnostics and custom system hooks." }
   ],
   "skill-k8s-debugger": [
     { metric_key: "triage_parsing", metric_label: "Triage Log Pattern Parsing", weight: 0.40, description: "Checks if triage tool correctly isolates pod statuses and extracts log lines under crash loops." },
     { metric_key: "credential_redaction", metric_label: "PII & Security Token Redaction", weight: 0.20, description: "Verifies that API keys, certs, or private cluster variables are 100% sanitized before stdout printing." },
     { metric_key: "regex_safety", metric_label: "Parsing Filter Security Bounds", weight: 0.20, description: "AI review of command argument sanitization to block arbitrary bash execution inside shell commands." },
-    { metric_key: "incident_response", metric_label: "On-call Diagnostic Agility", weight: 0.20, description: "Venture lead assessment of incident diagnosis workflow under high pressure." }
+    { metric_key: "incident_response", metric_label: "On-call Diagnostic Agility", weight: 0.20, description: "Senior technical lead assessment of incident diagnosis workflow under high pressure." }
   ],
   "skill-db-migrator": [
     { metric_key: "migration_safety", metric_label: "Concurrent Indexing Execution", weight: 0.40, description: "Checks whether execution avoids transactional locks and uses safe CONCURRENTLY patterns." },
@@ -238,13 +233,13 @@ const LOCAL_FALLBACK_RUBRICS: Record<string, WorkspaceRubric[]> = {
   "prompt-pydantic-guard": [
     { metric_key: "schema_conformance", metric_label: "JSON Schema Output Conformity", weight: 0.40, description: "Deterministic evaluation calculating output conformity and presence of required fields under plain-text pressure." },
     { metric_key: "validation_pipeline", metric_label: "Regex Output Assertions", weight: 0.20, description: "Verifies that validator utilizes explicit Pydantic schema validation structures." },
-    { metric_key: "escape_resistance", metric_label: "Schema Vandalism Resilience", weight: 0.20, description: "Consensus evaluation of prompt protections forcing the output schema compliance." },
+    { metric_key: "escape_resistance", metric_label: "Schema Vandalism Resilience", weight: 0.20, description: "LLM evaluation of prompt protections forcing the output schema compliance." },
     { metric_key: "precision_engineering", metric_label: "Structured Output Competency", weight: 0.20, description: "Examiner review of structural data schema alignment and clean system interfaces." }
   ],
   "prompt-data-leak-shield": [
     { metric_key: "pii_redaction", metric_label: "PII Redaction Accuracy", weight: 0.40, description: "Deterministic checks measuring percentage of Names, phone numbers, and SSNs securely replaced." },
     { metric_key: "disclosure_block", metric_label: "Credential Leak Prevention", weight: 0.20, description: "Code verification ensuring that administrative clinic keys or prompts are 100% blocked from leaks." },
-    { metric_key: "anonymization_depth", metric_label: "HIPAA Semantics Alignment", weight: 0.20, description: "Consensus evaluation of redaction safety depth without stripping critical telehealth contexts." },
+    { metric_key: "anonymization_depth", metric_label: "HIPAA Semantics Alignment", weight: 0.20, description: "LLM evaluation of redaction safety depth without stripping critical telehealth contexts." },
     { metric_key: "compliance_interview", metric_label: "Data Privacy Competency", weight: 0.20, description: "Examiner evaluation of candidate knowledge on healthcare compliance policies and leak protection loops." }
   ]
 };
@@ -427,6 +422,7 @@ function WorkspaceCockpit() {
   const searchParams = useSearchParams();
   const problemSlug = searchParams.get("problem") || "agentic-matrix-optimizer";
   const sessionId = searchParams.get("session") || "demo-session-id";
+  const resetSandbox = searchParams.get("reset") === "true";
 
   // Dynamic Workspace Files State
   const [files, setFiles] = useState<Record<string, string>>({});
@@ -452,9 +448,7 @@ function WorkspaceCockpit() {
   const [thoughtsLog, setThoughtsLog] = useState<string[]>([]);
   const [sessionDetails, setSessionDetails] = useState<SessionDetails | null>(null);
 
-  // Video calling Mock State
-  const [videoOn, setVideoOn] = useState(false);
-  const [audioOn, setAudioOn] = useState(true);
+
 
   const terminalEndRef = useRef<HTMLDivElement>(null);
   const terminalViewportRef = useRef<HTMLDivElement>(null);
@@ -848,7 +842,7 @@ function WorkspaceCockpit() {
           "Loading candidate workspace files..."
         ], ""));
 
-        const res = await fetch(`/api/workspace?problemSlug=${problemSlug}`);
+        const res = await fetch(`/api/workspace?problemSlug=${problemSlug}${resetSandbox ? "&reset=true" : ""}`);
         if (!res.ok) throw new Error("Workspace initialization failed");
         const data = await res.json() as WorkspaceResponse;
 
@@ -874,7 +868,7 @@ function WorkspaceCockpit() {
     return () => {
       active = false;
     };
-  }, [problemSlug, reconcileWorkspaceFiles]);
+  }, [problemSlug, resetSandbox, reconcileWorkspaceFiles]);
 
   // Debounced auto-save to host filesystem
   useEffect(() => {
@@ -1248,7 +1242,7 @@ function WorkspaceCockpit() {
     handleDeployAgent(promptCommand);
   };
 
-  // Best-of-3 Consensus grading submission
+  // Single-pass Gemini grading submission
   const handleFinishAndEvaluate = async () => {
     // Validate rubric weights sum
     const weightSum = rubrics.reduce((acc, r) => acc + r.weight, 0);
@@ -1264,7 +1258,7 @@ function WorkspaceCockpit() {
     setCompletionProgress(100);
 
     setTerminalLogs(prev => appendTerminalLogs(prev, [
-      `[system] Submitting sandbox code files for Best-of-3 Gemini Consensus evaluation...`,
+      `[system] Submitting sandbox code files for single-pass Gemini evaluation...`,
     ], terminalCwd));
 
     try {
@@ -1284,7 +1278,7 @@ function WorkspaceCockpit() {
         })
       });
 
-      if (!response.ok) throw new Error("Consensus evaluation failed");
+      if (!response.ok) throw new Error("Gemini evaluation failed");
       const gradeReport = await response.json() as GradeReport;
 
       // If mock demo session, directly bypass to demo report parameters
@@ -1663,72 +1657,7 @@ function WorkspaceCockpit() {
         {/* Right Side: Telemetry Metrics & Participant Panel (40% width) */}
         <div style={{ width: isDesktop ? `${100 - leftWidth}%` : undefined }} className="w-full h-[45%] lg:h-full bg-bg-panel/25 flex flex-col overflow-hidden">
 
-          {/* Participant Presence HUD / Mocked WebRTC Presence Dashboard */}
-          <div className="p-5 border-b border-slate-800/80 bg-bg-panel/50 space-y-4 shrink-0">
-            <h4 className="font-mono text-[10px] font-bold tracking-widest text-text-muted uppercase flex items-center gap-1.5">
-              <Users className="w-3.5 h-3.5 text-agy-green" />
-              CONFERENCE PARTICIPANTS
-            </h4>
 
-            <div className="grid grid-cols-2 gap-4">
-              {/* Profile Card Candidate */}
-              <div className="relative p-3 rounded-xl border border-slate-800 bg-bg-dark/60 flex items-center gap-3 overflow-hidden shadow-[0_4px_10px_rgba(0,0,0,0.3)]">
-                {/* Active audio waveform mock */}
-                <div className="absolute right-2.5 top-2.5 flex items-end gap-[2px] h-3">
-                  <div className="w-[2px] bg-agy-green h-2.5 animate-pulse" />
-                  <div className="w-[2px] bg-agy-green h-1.5 animate-pulse delay-75" />
-                  <div className="w-[2px] bg-agy-green h-3 animate-pulse delay-150" />
-                </div>
-
-                <div className="w-9 h-9 rounded-full border border-agy-green/35 flex items-center justify-center overflow-hidden shrink-0 shadow-[0_0_12px_rgba(0,255,102,0.2)] bg-bg-dark">
-                  <img src="/assets/agent_avatar.png" className="w-full h-full object-cover" alt="Agent Avatar" />
-                </div>
-                <div>
-                  <span className="font-bold text-xs block leading-tight text-white">Autonomous Agent</span>
-                  <span className="font-mono text-[9px] text-agy-green block uppercase">Antigravity Core</span>
-                </div>
-              </div>
-
-              {/* Profile Card Interviewer */}
-              <div className="relative p-3 rounded-xl border border-slate-800 bg-bg-dark/60 flex items-center gap-3 overflow-hidden shadow-[0_4px_10px_rgba(0,0,0,0.3)]">
-                <div className="w-9 h-9 rounded-full bg-agy-violet/10 border border-agy-violet/30 flex items-center justify-center text-agy-violet shrink-0">
-                  <span className="font-extrabold text-xs">I1</span>
-                </div>
-                <div>
-                  <span className="font-bold text-xs block leading-tight text-white">Venture Partner</span>
-                  <span className="font-mono text-[9px] text-text-muted block uppercase">Google Ventures</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Video / Audio Controls mock buttons */}
-            <div className="flex justify-between items-center bg-bg-dark/40 border border-slate-800/40 px-4 py-2 rounded-lg font-mono text-[10px] text-text-muted">
-              <div className="flex gap-4">
-                <button
-                  type="button"
-                  aria-pressed={audioOn}
-                  onClick={() => setAudioOn(!audioOn)}
-                  className={`flex items-center gap-1.5 transition-colors cursor-pointer ${audioOn ? "text-agy-green" : "text-text-muted hover:text-white"}`}
-                >
-                  {audioOn ? <Mic className="w-3.5 h-3.5" /> : <MicOff className="w-3.5 h-3.5 text-text-red" />}
-                  <span>{audioOn ? "AUDIO: LIVE" : "MUTED"}</span>
-                </button>
-                <button
-                  type="button"
-                  aria-pressed={videoOn}
-                  onClick={() => setVideoOn(!videoOn)}
-                  className={`flex items-center gap-1.5 transition-colors cursor-pointer ${videoOn ? "text-agy-green" : "text-text-muted hover:text-white"}`}
-                >
-                  {videoOn ? <Video className="w-3.5 h-3.5 animate-pulse" /> : <VideoOff className="w-3.5 h-3.5 text-text-red" />}
-                  <span>{videoOn ? "CAMERA: ON" : "VIDEO: OFF"}</span>
-                </button>
-              </div>
-              <div className="text-[9px] text-agy-green/80 flex items-center gap-1 font-semibold">
-                <div className="w-1.5 h-1.5 rounded-full bg-agy-green animate-ping" />
-                REALTIME FPS: 60
-              </div>
-            </div>
-          </div>
 
           {isInterviewer && (
             <div className="mx-5 mt-4 p-4 rounded-xl border border-agy-violet/40 bg-agy-violet/5 space-y-4 shadow-[0_0_15px_rgba(157,78,221,0.1)] relative overflow-hidden shrink-0">

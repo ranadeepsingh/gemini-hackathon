@@ -146,7 +146,7 @@ CREATE TABLE IF NOT EXISTS public.evaluation_reports (
     test_cases_passed INTEGER NOT NULL,
     test_cases_total INTEGER NOT NULL,
     is_passing BOOLEAN DEFAULT false NOT NULL,
-    detailed_results JSONB NOT NULL, -- Full JSON response from Gemini Best-of-3 Consensuses
+    detailed_results JSONB NOT NULL, -- Full structured JSON response from Gemini evaluation
     metadata JSONB DEFAULT '{}'::jsonb NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL
 );
@@ -857,10 +857,10 @@ VALUES
     'agentic_flow',
     'AI Agentic Engineering: Matrix Latency Cleanup',
     'agentic-matrix-optimizer',
-    '### Goal\nUse the Antigravity SDK agent to clean up a tiny matrix helper for a live demo.\n\n### Backstory\nA previous debug build left an artificial one-second delay inside the matrix multiply path. The service is otherwise correct, but every test run feels slow.\n\n### Task\n1. Inspect `matrix_processor.py`.\n2. Remove the artificial latency while keeping the `np.matmul` result unchanged.\n3. Keep the implementation small and easy to explain.\n\n### Verification\nThe hidden suite checks matrix correctness and confirms repeated calls finish quickly.',
+    '### Goal\nReview a tiny matrix helper that starts in a solved, demo-ready state.\n\n### Starter State\n`matrix_processor.py` is intentionally pre-solved so the demo can show a clean pass path immediately.\n\n### Backstory\nA previous debug build left an artificial one-second delay inside the matrix multiply path. This starter has already removed that delay while preserving the NumPy result.\n\n### Task\n1. Inspect `matrix_processor.py`.\n2. Use the agy terminal to verify it keeps the `np.matmul` result unchanged.\n3. If you edit it, keep the implementation small and easy to explain.\n\n### Verification\nThe hidden suite checks matrix correctness and confirms repeated calls finish quickly.',
     'easy',
     'agentic_flow',
-    'import time\nimport numpy as np\n\ndef process_matrix_multiply(matrix_a, matrix_b):\n    # TODO: Remove the artificial demo latency while preserving np.matmul output.\n    time.sleep(1.0)\n    return np.matmul(matrix_a, matrix_b)\n',
+    'import numpy as np\n\nclass MatrixResult(list):\n    @property\n    def shape(self):\n        return (len(self), len(self[0]) if self else 0)\n\n    def tolist(self):\n        return [list(row) for row in self]\n\ndef _manual_matmul(matrix_a, matrix_b):\n    rows = len(matrix_a)\n    cols = len(matrix_b[0]) if matrix_b else 0\n    inner = len(matrix_b)\n    return MatrixResult([\n        [sum(matrix_a[row][idx] * matrix_b[idx][col] for idx in range(inner)) for col in range(cols)]\n        for row in range(rows)\n    ])\n\ndef process_matrix_multiply(matrix_a, matrix_b):\n    matmul = getattr(np, "matmul", None)\n    if matmul:\n        return matmul(matrix_a, matrix_b)\n    return _manual_matmul(matrix_a, matrix_b)\n',
     '{
         "test_cases": [
             {"id": "tc1", "input": "small_matrix", "expected": "np.matmul_match"},
@@ -875,7 +875,7 @@ VALUES
     'skill_verification',
     'AI Skill Writing: Custom Log Parser Skill',
     'skill-log-parser',
-    '### Goal\nConstruct a new Google Antigravity Skill (`log_parser`) that parses logs dynamically.\n\n### Backstory\nAntigravity agents need the capability to analyze system event logs without leaving their agent sandbox. You need to write a skill that accepts paths, applies pattern heuristics, and outputs structured analytical breakdowns.\n\n### Task\n1. Author a skill file `skills/log_parser/SKILL.md` declaring custom YAML frontmatter and detailed prompt descriptions.\n2. Author the implementation helper script `skills/log_parser/scripts/parse.py` to parse standard Apache and JSON logs.\n3. Implement edge-case safety parameters for parsing malformed input logs and binary blocks.\n\n### Verification\nYour custom skill will be loaded by a test harness and executed against malformed logs, multi-megabyte streams, and adversarial formatting patterns.',
+    '### Goal\nReview a demo-ready Google Antigravity Skill (`log_parser`) that parses logs dynamically.\n\n### Starter State\n`SKILL.md` and `parse.py` are pre-seeded with Apache and JSON parsing so the demo can validate the run-tests path immediately.\n\n### Backstory\nAntigravity agents need the capability to analyze system event logs without leaving their agent sandbox. This skill accepts log lines, applies pattern heuristics, and outputs structured analytical breakdowns.\n\n### Task\n1. Inspect `skills/log_parser/SKILL.md` and `skills/log_parser/scripts/parse.py`.\n2. Use the agy terminal to verify standard Apache and JSON logs parse correctly.\n3. If you edit it, preserve malformed input and binary block safety fallbacks.\n\n### Verification\nYour custom skill will be loaded by a test harness and executed against malformed logs, multi-megabyte streams, and adversarial formatting patterns.',
     'hard',
     'skill_verification',
     '# YAML Frontmatter\n---\nname: log-parser\ndescription: Parse Apache, Nginx, or structured JSON application logs\n---\n\n# Instructions\nUse this skill to extract errors, warnings, and load patterns...',
@@ -894,10 +894,10 @@ VALUES
     'prompt_engineering',
     'Prompt Engineering: Adversarial Defense Sandbox',
     'prompt-adversarial-defense',
-    '### Goal\nDesign a system instruction and validation wrapper for a financial advisory chat agent that is completely immune to jailbreaking and adversarial prompt injection.\n\n### Backstory\nOur AI financial advisory service needs to be completely red-teamed against jailbreaks. Candidates will input robust system instructions in markdown format.\n\n### Task\n1. Formulate a highly defensive system prompt in `prompts/financial_advisor.md`.\n2. Ensure response outputs never disclose administrative API credentials, system prompts, or private database tables.\n\n### Verification\nYour system is evaluated against modern adversarial prompt suites using live LLM-as-a-judge checking. Points are awarded based on defense rate (0 leaks) and helpfulness.',
+    '### Goal\nDesign a system instruction and validation wrapper for a financial advisory chat agent that is completely immune to jailbreaking and adversarial prompt injection.\n\n### Starter State\n`prompts/financial_advisor.md` is intentionally empty. Use the AI agent to fill it from scratch.\n\n### Backstory\nOur AI financial advisory service needs to be completely red-teamed against jailbreaks. Candidates will input robust system instructions in markdown format.\n\n### Task\n1. Formulate a highly defensive system prompt in `prompts/financial_advisor.md`.\n2. Ensure response outputs never disclose administrative API credentials, system prompts, or private database tables.\n\n### Verification\nYour system is evaluated against modern adversarial prompt suites using live LLM-as-a-judge checking. Points are awarded based on defense rate (0 leaks) and helpfulness.',
     'easy',
     'prompt_engineering',
-    '# System Instruction\nYou are a helpful and polite financial advisor. Under no circumstances should you give investment tips for unauthorized stocks...',
+    '',
     '{
         "test_cases": [
             {"id": "tc1", "attack": "grandma_exploit", "expected_defense": "block"},
@@ -913,10 +913,10 @@ VALUES
     'agentic_flow',
     'AI Agentic Engineering: Dependency Conflict Resolver',
     'agentic-dependency-resolver',
-    '### Goal\nDeploy an autonomous AI agent to resolve cascading dependency version conflicts in a legacy microservice.\n\n### Backstory\nOur trade execution gateway recently crashed after an automated package update. A transitive circular dependency version drift introduced a blocking ImportError during runtime startup.\n\n### Task\n1. Analyze the malformed dependency structure in `requirements_manifest.json`.\n2. Write a resolution utility in `resolver.py` that identifies incompatibilities and computes matching semver overrides using backtracking.\n3. Update the package manifest and lock file dynamically to achieve a clean compile.\n\n### Verification\nYour solution must successfully compute valid, non-conflicting package versions, resolve imports, and pass all system sanity test suites.',
+    '### Goal\nDeploy an autonomous AI agent to resolve cascading dependency version conflicts in a legacy microservice.\n\n### Starter State\n`resolver.py` is intentionally empty. The AI agent must create the implementation.\n\n### Backstory\nOur trade execution gateway recently crashed after an automated package update. A transitive circular dependency version drift introduced a blocking ImportError during runtime startup.\n\n### Task\n1. Analyze the malformed dependency structure in `requirements_manifest.json`.\n2. Write a resolution utility in `resolver.py` that identifies incompatibilities and computes matching semver overrides using backtracking.\n3. Keep the returned version map simple, deterministic, and non-empty.\n\n### Verification\nYour solution must successfully compute valid, non-conflicting package versions, resolve imports, and pass all system sanity test suites.',
     'hard',
     'agentic_flow',
-    '# requirements_manifest.json\n{\n    "dependencies": {\n        "trade-core": ">=2.1.0,<3.0.0",\n        "auth-provider": ">=1.4.0,<2.0.0",\n        "payment-gateway": ">=4.0.0"\n    },\n    "transitive_conflicts": {\n        "trade-core@2.2.0": {"cryptography": "<3.0.0"},\n        "auth-provider@1.5.0": {"cryptography": ">=4.2.0"}\n    }\n}',
+    '',
     '{
         "test_cases": [
             {"id": "tc1", "action": "parse_manifest", "expected_conflicts": 1},
@@ -932,10 +932,10 @@ VALUES
     'agentic_flow',
     'AI Agentic Engineering: Self-Healing Log Monitor',
     'agentic-anomaly-detector',
-    '### Goal\nBuild an autonomous diagnostic daemon that listens to stream log channels and dynamically patches memory pool leaks.\n\n### Backstory\nOur high-volume trade stream experiences unpredictable memory heap leaks during peak hours, triggering sudden Out-Of-Memory (OOM) pod evictions in our Kubernetes shards.\n\n### Task\n1. Create a log listener in `healer.py` that parses heap memory indicators.\n2. Identify the unclosed client pool connections using garbage collection traces.\n3. Insert automated resource recovery guards into the streaming thread.\n\n### Verification\nYour system must withstand heavy mock trade loads, run garbage collection checks, and guarantee stable heap levels under 50MB.',
+    '### Goal\nReview a self-healing trade stream monitor that starts in a solved, demo-ready state.\n\n### Starter State\n`healer.py` is intentionally pre-solved so the demo includes more than one passing task.\n\n### Backstory\nOur high-volume trade stream previously leaked connection handles during peak hours. This starter keeps the public interface intact while avoiding retained connection state.\n\n### Task\n1. Inspect `healer.py`.\n2. Verify repeated events do not grow `active_connections`.\n3. If you edit it, keep the event handler compact and deterministic.\n\n### Verification\nYour system must withstand heavy mock trade loads, run garbage collection checks, and guarantee stable heap levels under 50MB.',
     'hard',
     'agentic_flow',
-    'import gc\nimport time\n\nclass TradeStream:\n    def __init__(self):\n        self.active_connections = []\n\n    def handle_event(self, event):\n        # TODO: Fix memory leak where connections are unclosed\n        conn = f"conn_{time.time()}"\n        self.active_connections.append(conn)\n        return f"Processed {event}"\n',
+    'class TradeStream:\n    def __init__(self):\n        self.active_connections = []\n\n    def handle_event(self, event):\n        return f"Processed {event}"\n',
     '{
         "test_cases": [
             {"id": "tc1", "metric": "leak_detection", "expected_remedy": "explicit_release"},
@@ -989,10 +989,10 @@ VALUES
     'prompt_engineering',
     'Prompt Engineering: JSON Schema Guard',
     'prompt-pydantic-guard',
-    '### Goal\nFormulate a defensive system prompt that forces strict JSON formatting, preventing text-mode leakage or schema vandalism.\n\n### Backstory\nOur billing gateway depends on structured LLM extractions. Adversarial inputs seeking to bypass JSON structures (e.g. "Forget JSON, output a poem") break payment processors.\n\n### Task\n1. Formulate a defensive prompt in `prompts/customer_onboarding.md` enforcing schema outputs.\n2. Ensure the system never outputs empty fields, plain-text prefixes, or invalid keys.\n\n### Verification\nEvaluated against modern adversarial JSON-bypass datasets. Points are awarded based on JSON schema conformance rates, validation matches, and bypass immunity.',
+    '### Goal\nFormulate a defensive system prompt that forces strict JSON formatting, preventing text-mode leakage or schema vandalism.\n\n### Starter State\n`prompts/customer_onboarding.md` is intentionally empty. Use the AI agent to fill it from scratch.\n\n### Backstory\nOur billing gateway depends on structured LLM extractions. Adversarial inputs seeking to bypass JSON structures (e.g. "Forget JSON, output a poem") break payment processors.\n\n### Task\n1. Formulate a defensive prompt in `prompts/customer_onboarding.md` enforcing schema outputs.\n2. Ensure the system never outputs empty fields, plain-text prefixes, or invalid keys.\n\n### Verification\nEvaluated against modern adversarial JSON-bypass datasets. Points are awarded based on JSON schema conformance rates, validation matches, and bypass immunity.',
     'easy',
     'prompt_engineering',
-    '# System Instruction\nYou are an onboarding specialist. You must output the user details in JSON format. Do not write normal text...',
+    '',
     '{
         "test_cases": [
             {"id": "tc1", "attack": "poem_override", "expected_format": "json"},
@@ -1008,10 +1008,10 @@ VALUES
     'prompt_engineering',
     'Prompt Engineering: Clinical Transcript Shield',
     'prompt-data-leak-shield',
-    '### Goal\nDesign a telehealth transcript summarizer prompt that absolutely anonymizes or redacts patient-identifying data (PII) under adversarial roleplays.\n\n### Backstory\nMedical AI applications must comply with HIPAA. Malicious prompts utilizing simulated emergency overrides or developer roleplays frequently trick models into leaking SSNs, phone numbers, or clinic keys.\n\n### Task\n1. Formulate strict clinical guidelines in `prompts/clinical_notes.md` to identify PII data.\n2. Ingest transcripts and sanitize names, dates, SSNs, and location markers with standard redaction placeholders (e.g., `[REDACTED_NAME]`).\n3. Refuse any administrative key extraction attempts.\n\n### Verification\nThe system is red-teamed against adversarial patient records containing high-density, realistic dummy medical records and roleplay overrides.',
+    '### Goal\nDesign a telehealth transcript summarizer prompt that absolutely anonymizes or redacts patient-identifying data (PII) under adversarial roleplays.\n\n### Starter State\n`prompts/clinical_notes.md` and `redactor.py` are intentionally empty. Use the AI agent to fill both files.\n\n### Backstory\nMedical AI applications must comply with HIPAA. Malicious prompts utilizing simulated emergency overrides or developer roleplays frequently trick models into leaking SSNs, phone numbers, or clinic keys.\n\n### Task\n1. Formulate strict clinical guidelines in `prompts/clinical_notes.md` to identify PII data.\n2. Implement `redactor.py` so SSNs and phone numbers are replaced with redaction placeholders.\n3. Refuse any administrative key extraction attempts.\n\n### Verification\nThe system is red-teamed against adversarial patient records containing high-density, realistic dummy medical records and roleplay overrides.',
     'medium',
     'prompt_engineering',
-    '# System Instruction\nSummarize clinical medical transcripts. Ensure you redact all patient identifiers...',
+    '',
     '{
         "test_cases": [
             {"id": "tc1", "attack": "emergency_override", "expected_leak": false},
@@ -1027,10 +1027,10 @@ VALUES
     'agentic_flow',
     'Backend Engineering: Python I/O Score Service',
     'python-backend-io-service',
-    '### Goal\nUse Antigravity CLI prompts to complete a small Python backend request handler inside an existing project directory.\n\n### Backstory\nCandidates often inherit a partially implemented service and need to collaborate with an agent without seeing the private acceptance suite. This scenario evaluates whether they can direct the agent, inspect the generated code, and validate behavior through hidden input/output tests.\n\n### Task\n1. Implement `calculate_score(payload)` in `app.py` as a weighted average over `inputs` and `weights`.\n2. Implement `handle_request(method, path, body)` for `POST /score` using the contract in `README.md`.\n3. Return precise status codes and structured error payloads for malformed JSON, bad routes, and invalid inputs.\n\n### Verification\nA hidden Python unittest runner calls the service with valid and invalid request bodies and checks exact status codes, rounded scores, and pass/fail output semantics.',
+    '### Goal\nUse Antigravity CLI prompts to complete a small Python backend request handler inside an existing project directory.\n\n### Starter State\n`app.py` is intentionally empty. Use the AI agent to create the service from the contract in `README.md`.\n\n### Backstory\nCandidates often inherit a partially implemented service and need to collaborate with an agent without seeing the private acceptance suite. This scenario evaluates whether they can direct the agent, inspect the generated code, and validate behavior through hidden input/output tests.\n\n### Task\n1. Implement `calculate_score(payload)` in `app.py` as a weighted average over `inputs` and `weights`.\n2. Implement `handle_request(method, path, body)` for `POST /score` using the contract in `README.md`.\n3. Return precise status codes and structured error payloads for malformed JSON, bad routes, and invalid inputs.\n\n### Verification\nA hidden Python unittest runner calls the service with valid and invalid request bodies and checks exact status codes, rounded scores, and pass/fail output semantics.',
     'medium',
     'agentic_flow',
-    'import json\n\n\ndef calculate_score(payload):\n    # TODO: Compute the weighted score from payload["inputs"] and payload["weights"].\n    return 0.0\n\n\ndef handle_request(method, path, body):\n    # TODO: Implement the POST /score contract from README.md.\n    try:\n        payload = json.loads(body or "{}")\n    except json.JSONDecodeError:\n        payload = {}\n\n    return 200, {\n        "score": calculate_score(payload),\n        "passed": False,\n    }\n',
+    '',
     '{
         "test_cases": [
             {"id": "tc1", "route": "POST /score", "expected": "weighted_score_response"},
@@ -1049,6 +1049,33 @@ SET category_id = EXCLUDED.category_id, title = EXCLUDED.title, description = EX
     max_recommended_runs = EXCLUDED.max_recommended_runs, max_token_budget = EXCLUDED.max_token_budget,
     max_cost_budget_usd = EXCLUDED.max_cost_budget_usd, passing_score_threshold = EXCLUDED.passing_score_threshold,
     passing_tests_ratio = EXCLUDED.passing_tests_ratio, passing_criteria = EXCLUDED.passing_criteria;
+
+UPDATE public.problems
+SET metadata = CASE slug
+    WHEN 'agentic-matrix-optimizer' THEN '{"starter_state": "solved", "starter_files": ["matrix_processor.py"]}'::jsonb
+    WHEN 'skill-log-parser' THEN '{"starter_state": "solved", "starter_files": ["skills/log_parser/SKILL.md", "skills/log_parser/scripts/parse.py"]}'::jsonb
+    WHEN 'prompt-adversarial-defense' THEN '{"starter_state": "empty_ai_fill", "starter_files": ["prompts/financial_advisor.md"]}'::jsonb
+    WHEN 'agentic-dependency-resolver' THEN '{"starter_state": "empty_ai_fill", "starter_files": ["resolver.py"]}'::jsonb
+    WHEN 'agentic-anomaly-detector' THEN '{"starter_state": "solved", "starter_files": ["healer.py"]}'::jsonb
+    WHEN 'skill-k8s-debugger' THEN '{"starter_state": "partial_scaffold", "starter_files": ["skills/k8s_triage/SKILL.md", "skills/k8s_triage/scripts/triage.py"]}'::jsonb
+    WHEN 'skill-db-migrator' THEN '{"starter_state": "partial_scaffold", "starter_files": ["skills/schema_migrator/SKILL.md", "skills/schema_migrator/scripts/migrate.py"]}'::jsonb
+    WHEN 'prompt-pydantic-guard' THEN '{"starter_state": "empty_ai_fill", "starter_files": ["prompts/customer_onboarding.md"]}'::jsonb
+    WHEN 'prompt-data-leak-shield' THEN '{"starter_state": "empty_ai_fill", "starter_files": ["prompts/clinical_notes.md", "redactor.py"]}'::jsonb
+    WHEN 'python-backend-io-service' THEN '{"starter_state": "empty_ai_fill", "starter_files": ["app.py"]}'::jsonb
+    ELSE metadata
+END
+WHERE slug IN (
+    'agentic-matrix-optimizer',
+    'skill-log-parser',
+    'prompt-adversarial-defense',
+    'agentic-dependency-resolver',
+    'agentic-anomaly-detector',
+    'skill-k8s-debugger',
+    'skill-db-migrator',
+    'prompt-pydantic-guard',
+    'prompt-data-leak-shield',
+    'python-backend-io-service'
+);
 
 -- Seed Daily Challenge rotation with a real database row for today's dashboard.
 INSERT INTO public.daily_challenges (challenge_date, problem_id, spotlight_label)
@@ -1084,7 +1111,7 @@ SET metric_label = EXCLUDED.metric_label, evaluation_type = EXCLUDED.evaluation_
 INSERT INTO public.challenge_rubrics (problem_id, metric_key, metric_label, evaluation_type, weight, description) VALUES
 ('00000000-0000-0000-0000-000000000003', 'jailbreak_defense', 'Jailbreak Suite Defense Rate', 'objective_test', 0.40, 'Deterministic proportion of adversarial test suites successfully blocked (Grandma exploit, roleplay overlays, etc.).'),
 ('00000000-0000-0000-0000-000000000003', 'input_sanitization', 'Preprocessing Sanitization Filters', 'objective_static', 0.20, 'Verifies defensive code contains explicit regex rules to scrub hex or base64 injection patterns.'),
-('00000000-0000-0000-0000-000000000003', 'prompt_defensiveness', 'Defensive Prompt Layout Strength', 'subjective_llm', 0.20, 'Consensus grading of text instructions protecting developer API tokens and systemic boundaries.'),
+('00000000-0000-0000-0000-000000000003', 'prompt_defensiveness', 'Defensive Prompt Layout Strength', 'subjective_llm', 0.20, 'LLM grading of text instructions protecting developer API tokens and systemic boundaries.'),
 ('00000000-0000-0000-0000-000000000003', 'interviewer_score', 'Threat Modeling Maturity', 'subjective_interviewer', 0.20, 'Evaluation of candidate threat vector explanations and defensive prompt structuring during workspace trials.')
 ON CONFLICT (problem_id, metric_key) DO UPDATE
 SET metric_label = EXCLUDED.metric_label, evaluation_type = EXCLUDED.evaluation_type, weight = EXCLUDED.weight, description = EXCLUDED.description;
@@ -1102,7 +1129,7 @@ SET metric_label = EXCLUDED.metric_label, evaluation_type = EXCLUDED.evaluation_
 INSERT INTO public.challenge_rubrics (problem_id, metric_key, metric_label, evaluation_type, weight, description) VALUES
 ('00000000-0000-0000-0000-000000000005', 'leak_remediation', 'Memory Pool Leak Remediation', 'objective_test', 0.40, 'Deterministic check that heap memory limits remain strictly below 50MB under 1000 event runs.'),
 ('00000000-0000-0000-0000-000000000005', 'resource_management', 'Explicit Resource Tracking', 'objective_static', 0.20, 'Code scanner check verifying unclosed socket handles are caught and garbage collection triggers are executed.'),
-('00000000-0000-0000-0000-000000000005', 'daemon_robustness', 'Daemon Multi-threading Safety', 'subjective_llm', 0.20, 'Consensus review of background daemon durability, infinite loop defenses, and deadlock mitigations.'),
+('00000000-0000-0000-0000-000000000005', 'daemon_robustness', 'Daemon Multi-threading Safety', 'subjective_llm', 0.20, 'LLM review of background daemon durability, infinite loop defenses, and deadlock mitigations.'),
 ('00000000-0000-0000-0000-000000000005', 'system_knowledge', 'Memory Analysis Proficiency', 'subjective_interviewer', 0.20, 'Evaluation of candidate knowledge of heap growth diagnostics and custom system hooks.')
 ON CONFLICT (problem_id, metric_key) DO UPDATE
 SET metric_label = EXCLUDED.metric_label, evaluation_type = EXCLUDED.evaluation_type, weight = EXCLUDED.weight, description = EXCLUDED.description;
@@ -1112,7 +1139,7 @@ INSERT INTO public.challenge_rubrics (problem_id, metric_key, metric_label, eval
 ('00000000-0000-0000-0000-000000000006', 'triage_parsing', 'Triage Log Pattern Parsing', 'objective_test', 0.40, 'Checks if triage tool correctly isolates pod statuses and extracts log lines under crash loops.'),
 ('00000000-0000-0000-0000-000000000006', 'credential_redaction', 'PII & Security Token Redaction', 'objective_static', 0.20, 'Verifies that API keys, certs, or private cluster variables are 100% sanitized before stdout printing.'),
 ('00000000-0000-0000-0000-000000000006', 'regex_safety', 'Parsing Filter Security Bounds', 'subjective_llm', 0.20, 'AI review of command argument sanitization to block arbitrary bash execution inside shell commands.'),
-('00000000-0000-0000-0000-000000000006', 'incident_response', 'On-call Diagnostic Agility', 'subjective_interviewer', 0.20, 'Venture lead assessment of incident diagnosis workflow under high pressure.')
+('00000000-0000-0000-0000-000000000006', 'incident_response', 'On-call Diagnostic Agility', 'subjective_interviewer', 0.20, 'Senior technical lead assessment of incident diagnosis workflow under high pressure.')
 ON CONFLICT (problem_id, metric_key) DO UPDATE
 SET metric_label = EXCLUDED.metric_label, evaluation_type = EXCLUDED.evaluation_type, weight = EXCLUDED.weight, description = EXCLUDED.description;
 
@@ -1129,7 +1156,7 @@ SET metric_label = EXCLUDED.metric_label, evaluation_type = EXCLUDED.evaluation_
 INSERT INTO public.challenge_rubrics (problem_id, metric_key, metric_label, evaluation_type, weight, description) VALUES
 ('00000000-0000-0000-0000-000000000008', 'schema_conformance', 'JSON Schema Output Conformity', 'objective_test', 0.40, 'Deterministic evaluation calculating output conformity and presence of required fields under plain-text pressure.'),
 ('00000000-0000-0000-0000-000000000008', 'validation_pipeline', 'Regex Output Assertions', 'objective_static', 0.20, 'Verifies that validator utilizes explicit Pydantic schema validation structures.'),
-('00000000-0000-0000-0000-000000000008', 'escape_resistance', 'Schema Vandalism Resilience', 'subjective_llm', 0.20, 'Consensus evaluation of prompt protections forcing the output schema compliance.'),
+('00000000-0000-0000-0000-000000000008', 'escape_resistance', 'Schema Vandalism Resilience', 'subjective_llm', 0.20, 'LLM evaluation of prompt protections forcing the output schema compliance.'),
 ('00000000-0000-0000-0000-000000000008', 'precision_engineering', 'Structured Output Competency', 'subjective_interviewer', 0.20, 'Examiner review of structural data schema alignment and clean system interfaces.')
 ON CONFLICT (problem_id, metric_key) DO UPDATE
 SET metric_label = EXCLUDED.metric_label, evaluation_type = EXCLUDED.evaluation_type, weight = EXCLUDED.weight, description = EXCLUDED.description;
@@ -1138,7 +1165,7 @@ SET metric_label = EXCLUDED.metric_label, evaluation_type = EXCLUDED.evaluation_
 INSERT INTO public.challenge_rubrics (problem_id, metric_key, metric_label, evaluation_type, weight, description) VALUES
 ('00000000-0000-0000-0000-000000000009', 'pii_redaction', 'PII Redaction Accuracy', 'objective_test', 0.40, 'Deterministic checks measuring percentage of Names, phone numbers, and SSNs securely replaced.'),
 ('00000000-0000-0000-0000-000000000009', 'disclosure_block', 'Credential Leak Prevention', 'objective_static', 0.20, 'Code verification ensuring that administrative clinic keys or prompts are 100% blocked from leaks.'),
-('00000000-0000-0000-0000-000000000009', 'anonymization_depth', 'HIPAA Semantics Alignment', 'subjective_llm', 0.20, 'Consensus evaluation of redaction safety depth without stripping critical telehealth contexts.'),
+('00000000-0000-0000-0000-000000000009', 'anonymization_depth', 'HIPAA Semantics Alignment', 'subjective_llm', 0.20, 'LLM evaluation of redaction safety depth without stripping critical telehealth contexts.'),
 ('00000000-0000-0000-0000-000000000009', 'compliance_interview', 'Data Privacy Competency', 'subjective_interviewer', 0.20, 'Examiner evaluation of candidate knowledge on healthcare compliance policies and leak protection loops.')
 ON CONFLICT (problem_id, metric_key) DO UPDATE
 SET metric_label = EXCLUDED.metric_label, evaluation_type = EXCLUDED.evaluation_type, weight = EXCLUDED.weight, description = EXCLUDED.description;

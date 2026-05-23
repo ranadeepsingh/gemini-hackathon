@@ -665,7 +665,7 @@ export default function Home() {
             </span>
           </div>
           <span className="text-xs text-text-muted font-mono">
-            &copy; 2026 Google Hackathon. Targeted for Google Ventures review.
+            &copy; 2026 AntiCode. Programmatic Agentic Interview Platform.
           </span>
         </div>
       </footer>

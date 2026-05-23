@@ -8,7 +8,7 @@ All developers (and Autonomous Agents) must read and update this guide whenever 
 
 ## 🗺️ Entity Relationship Blueprint
 
-The database is built on top of **Supabase** (PostgreSQL). It maps individual developer profiles, categorical challenge version catalogs, isolated VM sandbox telemetry, and highly precise consensus evaluations.
+The database is built on top of **Supabase** (PostgreSQL). It maps individual developer profiles, categorical challenge version catalogs, isolated VM sandbox telemetry, and highly precise single-pass evaluations.
 
 ```mermaid
 erDiagram
@@ -140,7 +140,7 @@ erDiagram
         integer test_cases_passed
         integer test_cases_total
         boolean is_passing "Validated passing constraints check"
-        jsonb detailed_results "Complete multi-agent consensus log"
+        jsonb detailed_results "Complete structured evaluation payload"
         jsonb metadata "Unstructured JSON"
         timestamp created_at
     }
@@ -188,7 +188,7 @@ The central assignment problem catalog. Contains:
 *   **Budgets vs Actuals**: Establishes expectation thresholds (`recommended_time_mins`, `max_recommended_runs`).
 *   **Enforcements**: Enforces hard resource budgets (`max_token_budget`, `max_cost_budget_usd`).
 *   **Passing Criteria**: Track-specific passing requirements (`passing_score_threshold`, `passing_tests_ratio`).
-*   **Unstructured payload (`metadata` column)**: Allows storing arbitrary GCE VM container settings or environment flags.
+*   **Unstructured payload (`metadata` column)**: Allows storing arbitrary GCE VM container settings, environment flags, and starter-state markers such as `starter_state: "solved"` or `starter_state: "empty_ai_fill"`.
 
 ### 5. `public.challenge_rubrics`
 Stores non-hardcoded evaluation metrics.
@@ -204,7 +204,7 @@ Active, programmatic interview trial sessions. Tracks token economic consumption
 High-speed step-by-step tracing logs emitted during code execution. Segregates actions by Candidate, Autonomous Agent, or Interviewer override loads.
 
 ### 8. `public.evaluation_reports`
-The final scorecard summary detailing aggregated results and the median Best-of-3 Gemini structured review. A unique index on `session_id` keeps the relationship one scorecard per interview session.
+The final scorecard summary detailing aggregated results and the single Gemini structured review. A unique index on `session_id` keeps the relationship one scorecard per interview session.
 
 ### 9. `public.session_rubrics_scores`
 Individual score breakdown records corresponding to active rubrics for the given problem scorecard.

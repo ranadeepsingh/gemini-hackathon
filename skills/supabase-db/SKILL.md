@@ -15,7 +15,7 @@ The complete schema is maintained in [supabase/schema.sql](file:///Users/rana-ms
 *   **`problem_versions`**: Audits historically committed versions of problem formulations.
 *   **`interview_sessions`**: Logs candidate sessions, detailing VM statuses, zone listings, computed costs, and token usages.
 *   **`agent_telemetry`**: Stores real-time, granular logs of autonomous agent actions (thoughts, tool calls, and costs) to display live in the developer cockpit.
-*   **`evaluation_reports`**: Holds final scorecard statistics, summaries, and Gemini Best-of-3 Consensus results.
+*   **`evaluation_reports`**: Holds final scorecard statistics, summaries, and Gemini single-pass structured results.
 
 ## 2. Row Level Security (RLS) Policies
 Every table has RLS enabled to secure candidate records and system manifests:

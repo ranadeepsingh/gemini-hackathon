@@ -429,7 +429,7 @@ export default function LoginPage() {
             </span>
           </div>
 
-          {/* Quick Demo Bypass (Venture Presentation Mode) */}
+          {/* Quick Demo Bypass (System Demo Mode) */}
           <div className="grid grid-cols-2 gap-3.5">
             <button
               type="button"

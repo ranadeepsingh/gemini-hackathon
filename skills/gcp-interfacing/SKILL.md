@@ -11,7 +11,7 @@ This skill governs every Google Cloud Platform (GCP) and Google-hosted API touch
 
 | Area | Resource | Config / Name | Current repo status | Purpose |
 | --- | --- | --- | --- | --- |
-| AI evaluation | Gemini Developer API | `GEMINI_API_KEY`, `GEMINI_JUDGE_MODEL`, endpoint `generativelanguage.googleapis.com` | Actively implemented | Best-of-3 structured grading in `src/lib/evaluation/evaluator.ts`. |
+| AI evaluation | Gemini Developer API | `GEMINI_API_KEY`, `GEMINI_JUDGE_MODEL`, endpoint `generativelanguage.googleapis.com` | Actively implemented | Single-pass structured grading in `src/lib/evaluation/evaluator.ts`. |
 | Candidate agent | Gemini Developer API | `GEMINI_API_KEY`, `GEMINI_CASE_MODEL`, endpoint `generativelanguage.googleapis.com` | Actively implemented | Powers the local `bin/antigravity` coding agent. |
 | Auth to GCP | Service account key | `gcp-key.json`, `GOOGLE_APPLICATION_CREDENTIALS` | Documented/configured | Needed for future GCP SDK or `gcloud` calls. Do not commit. |
 | Sandboxes | Compute Engine | `GCP_GCE_ZONE`, `GCP_GCE_MACHINE_TYPE`, `GCP_GCE_IMAGE_*`, `GCP_GCE_OS_DISK_SIZE_GB` | Documented/configured; UI and DB simulate metadata today | Intended runtime for isolated candidate workspaces. |

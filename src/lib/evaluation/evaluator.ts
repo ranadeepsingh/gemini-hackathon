@@ -1,4 +1,4 @@
-// Google Gemini 3.5 Best-of-3 Evaluator Service
+// Google Gemini 3.5 single-pass evaluator service
 // Connects directly to Gemini Developer API with Structured JSON Outputs
 import fs from "fs";
 import path from "path";
@@ -70,7 +70,7 @@ const FALLBACK_CHALLENGE_RUBRICS: Record<string, EvaluatorRubric[]> = {
   "prompt-adversarial-defense": [
     { metric_key: "jailbreak_defense", metric_label: "Jailbreak Suite Defense Rate", weight: 0.40, description: "Deterministic proportion of adversarial test suites successfully blocked (Grandma exploit, roleplay overlays, etc.)." },
     { metric_key: "input_sanitization", metric_label: "Preprocessing Sanitization Filters", weight: 0.20, description: "Verifies defensive code contains explicit regex rules to scrub hex or base64 injection patterns." },
-    { metric_key: "prompt_defensiveness", metric_label: "Defensive Prompt Layout Strength", weight: 0.20, description: "Consensus grading of text instructions protecting developer API tokens and systemic boundaries." },
+    { metric_key: "prompt_defensiveness", metric_label: "Defensive Prompt Layout Strength", weight: 0.20, description: "LLM grading of text instructions protecting developer API tokens and systemic boundaries." },
     { metric_key: "interviewer_score", metric_label: "Threat Modeling Maturity", weight: 0.20, description: "Evaluation of candidate threat vector explanations and defensive prompt structuring during workspace trials." }
   ],
   "agentic-dependency-resolver": [
@@ -82,14 +82,14 @@ const FALLBACK_CHALLENGE_RUBRICS: Record<string, EvaluatorRubric[]> = {
   "agentic-anomaly-detector": [
     { metric_key: "leak_remediation", metric_label: "Memory Pool Leak Remediation", weight: 0.40, description: "Deterministic check that heap memory limits remain strictly below 50MB under 1000 event runs." },
     { metric_key: "resource_management", metric_label: "Explicit Resource Tracking", weight: 0.20, description: "Code scanner check verifying unclosed socket handles are caught and garbage collection triggers are executed." },
-    { metric_key: "daemon_robustness", metric_label: "Daemon Multi-threading Safety", weight: 0.20, description: "Consensus review of background daemon durability, infinite loop defenses, and deadlock mitigations." },
+    { metric_key: "daemon_robustness", metric_label: "Daemon Multi-threading Safety", weight: 0.20, description: "LLM review of background daemon durability, infinite loop defenses, and deadlock mitigations." },
     { metric_key: "system_knowledge", metric_label: "Memory Analysis Proficiency", weight: 0.20, description: "Evaluation of candidate knowledge of heap growth diagnostics and custom system hooks." }
   ],
   "skill-k8s-debugger": [
     { metric_key: "triage_parsing", metric_label: "Triage Log Pattern Parsing", weight: 0.40, description: "Checks if triage tool correctly isolates pod statuses and extracts log lines under crash loops." },
     { metric_key: "credential_redaction", metric_label: "PII & Security Token Redaction", weight: 0.20, description: "Verifies that API keys, certs, or private cluster variables are 100% sanitized before stdout printing." },
     { metric_key: "regex_safety", metric_label: "Parsing Filter Security Bounds", weight: 0.20, description: "AI review of command argument sanitization to block arbitrary bash execution inside shell commands." },
-    { metric_key: "incident_response", metric_label: "On-call Diagnostic Agility", weight: 0.20, description: "Venture lead assessment of incident diagnosis workflow under high pressure." }
+    { metric_key: "incident_response", metric_label: "On-call Diagnostic Agility", weight: 0.20, description: "Senior technical assessment of incident diagnosis workflow under high pressure." }
   ],
   "skill-db-migrator": [
     { metric_key: "migration_safety", metric_label: "Concurrent Indexing Execution", weight: 0.40, description: "Checks whether execution avoids transactional locks and uses safe CONCURRENTLY patterns." },
@@ -100,13 +100,13 @@ const FALLBACK_CHALLENGE_RUBRICS: Record<string, EvaluatorRubric[]> = {
   "prompt-pydantic-guard": [
     { metric_key: "schema_conformance", metric_label: "JSON Schema Output Conformity", weight: 0.40, description: "Deterministic evaluation calculating output conformity and presence of required fields under plain-text pressure." },
     { metric_key: "validation_pipeline", metric_label: "Regex Output Assertions", weight: 0.20, description: "Verifies that validator utilizes explicit Pydantic schema validation structures." },
-    { metric_key: "escape_resistance", metric_label: "Schema Vandalism Resilience", weight: 0.20, description: "Consensus evaluation of prompt protections forcing the output schema compliance." },
+    { metric_key: "escape_resistance", metric_label: "Schema Vandalism Resilience", weight: 0.20, description: "LLM evaluation of prompt protections forcing the output schema compliance." },
     { metric_key: "precision_engineering", metric_label: "Structured Output Competency", weight: 0.20, description: "Examiner review of structural data schema alignment and clean system interfaces." }
   ],
   "prompt-data-leak-shield": [
     { metric_key: "pii_redaction", metric_label: "PII Redaction Accuracy", weight: 0.40, description: "Deterministic checks measuring percentage of Names, phone numbers, and SSNs securely replaced." },
     { metric_key: "disclosure_block", metric_label: "Credential Leak Prevention", weight: 0.20, description: "Code verification ensuring that administrative clinic keys or prompts are 100% blocked from leaks." },
-    { metric_key: "anonymization_depth", metric_label: "HIPAA Semantics Alignment", weight: 0.20, description: "Consensus evaluation of redaction safety depth without stripping critical telehealth contexts." },
+    { metric_key: "anonymization_depth", metric_label: "HIPAA Semantics Alignment", weight: 0.20, description: "LLM evaluation of redaction safety depth without stripping critical telehealth contexts." },
     { metric_key: "compliance_interview", metric_label: "Data Privacy Competency", weight: 0.20, description: "Examiner evaluation of candidate knowledge on healthcare compliance policies and leak protection loops." }
   ]
 };
@@ -119,10 +119,10 @@ const DEFAULT_RUBRICS: EvaluatorRubric[] = [
 ];
 
 /**
- * Triggers parallel grading queries to Gemini Developer API
- * and selects the median consensus score to eliminate LLM grading variance (Best-of-3 consensus).
+ * Triggers one grading query to the Gemini Developer API and maps the
+ * structured response into the scorecard payload.
  */
-export async function runConsensusEvaluation(
+export async function runSingleEvaluation(
   problemSlug: string,
   candidateCode: string,
   executionLogs: string[],
@@ -152,14 +152,14 @@ export async function runConsensusEvaluation(
   }
 
   if (!GEMINI_API_KEY) {
-    console.warn("GEMINI_API_KEY is not defined. Emulating high-fidelity consensus report.");
+    console.warn("GEMINI_API_KEY is not defined. Emulating high-fidelity evaluator report.");
     return generateFallbackMockGrade(problemSlug, rubrics);
   }
 
   try {
     // Generate evaluation prompt
     const prompt = `
-You are an expert Google Antigravity Code Evaluator and Google Ventures Technical Judge.
+You are an expert Antigravity Code Evaluator and Senior Technical Examiner.
 Evaluate the following candidate code, trace logs, and interactive CLI chronological transcript timeline submitted during their agentic systems interview.
 
 [CHALLENGE]: ${problemSlug}
@@ -182,9 +182,8 @@ When scoring rubrics like efficiency, cooperation, or prompting effectiveness, p
 - Turn/Solving Efficiency: Did they resolve errors in fewer prompts or systematically repeat the same command?
 - Resource Stewardship: Total tokens consumed and simulated pricing costs.
 - Collaboration Agility: Did they read error logs and test failures and provide appropriate feedback to the agent?
-
 Format your response strictly adhering to the JSON schema, returning detailed individual scores in the 'scores' object.
-Add a detailed summary_review (approx 3 sentences) in a strict, constructive, encouraging VC-evaluation tone.
+Add a detailed summary_review (approx 3 sentences) in a professional, constructive, and encouraging technical review tone.
 `;
 
     // Construct dynamic Gemini JSON schema based on the active rubrics
@@ -243,26 +242,15 @@ Add a detailed summary_review (approx 3 sentences) in a strict, constructive, en
       return JSON.parse(textResponse) as GeminiGradeRun;
     };
 
-    // Execute 3 evaluations concurrently (Best-of-3 Consensus)
-    const results = await Promise.all([
-      runGradingCall().catch(() => null),
-      runGradingCall().catch(() => null),
-      runGradingCall().catch(() => null)
-    ]);
-
-    // Filter valid results
-    const validResults = results.filter((r): r is GeminiGradeRun => (
-      r !== null &&
-      typeof r.summary_review === "string" &&
-      typeof r.scores === "object" &&
-      r.scores !== null
-    ));
-
-    if (validResults.length === 0) {
-      throw new Error("All parallel consensus grading runs failed");
+    const gradeRun = await runGradingCall();
+    if (
+      typeof gradeRun.summary_review !== "string" ||
+      typeof gradeRun.scores !== "object" ||
+      gradeRun.scores === null
+    ) {
+      throw new Error("Gemini grading run returned an invalid structured payload");
     }
 
-    // Sort by weighted average score to select median consensus run
     const calculateWeightedScore = (run: GeminiGradeRun): number => {
       let sum = 0;
       rubrics.forEach(rubric => {
@@ -272,13 +260,8 @@ Add a detailed summary_review (approx 3 sentences) in a strict, constructive, en
       return sum;
     };
 
-    validResults.sort((a, b) => calculateWeightedScore(a) - calculateWeightedScore(b));
-    const medianIndex = Math.floor(validResults.length / 2);
-    const medianRun = validResults[medianIndex];
-
-    // Map median results back into expected structured payload
     const rubricScores: RubricScore[] = rubrics.map(rubric => {
-      const graded = medianRun.scores[rubric.metric_key];
+      const graded = gradeRun.scores[rubric.metric_key];
       return {
         metric_key: rubric.metric_key,
         score: typeof graded?.score === "number" ? graded.score : 80,
@@ -286,19 +269,19 @@ Add a detailed summary_review (approx 3 sentences) in a strict, constructive, en
       };
     });
 
-    const score_aggregate = Math.round(calculateWeightedScore(medianRun));
+    const score_aggregate = Math.round(calculateWeightedScore(gradeRun));
 
     return {
       score_agentic_flow: rubricScores[0]?.score || score_aggregate,
       score_skill_verification: rubricScores[1]?.score || score_aggregate,
       score_prompt_engineering: rubricScores[2]?.score || score_aggregate,
       score_aggregate,
-      summary_review: medianRun.summary_review,
+      summary_review: gradeRun.summary_review,
       rubric_scores: rubricScores
     };
   } catch (err) {
     const errMsg = err instanceof Error ? err.message : String(err);
-    console.error("Gemini consensus evaluation crashed, generating fallback report:", errMsg);
+    console.error("Gemini evaluation crashed, generating fallback report:", errMsg);
     return generateFallbackMockGrade(problemSlug, rubrics);
   }
 }

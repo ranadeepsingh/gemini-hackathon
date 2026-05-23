@@ -10,7 +10,8 @@ import {
   Printer,
   Share2,
   Lock,
-  ChevronRight
+  ChevronRight,
+  ChevronLeft
 } from "lucide-react";
 import AuthAwareHomeLink from "@/components/AuthAwareHomeLink";
 import { supabase } from "@/lib/supabase/client";
@@ -197,19 +198,20 @@ function ReportDetails() {
     fetchReport();
   }, [sessionId, problemSlug, gradeParam]);
 
+  const CENTER = 150;
+  const MAX_RADIUS = 80;
+
   // Math coordinates helper for the custom equilateral 3-Axis SVG Radar Skill chart
-  // Center is at (150, 150), radius 100
+  // Center is at (150, 150), radius 80 (tuned down from 100 to prevent text overflow)
   const getRadarPoint = (score: number, axisIndex: number) => {
-    const center = 150;
-    const maxRadius = 100;
-    const val = (score / 100) * maxRadius;
+    const val = (score / 100) * MAX_RADIUS;
     
     // Axis 0 (Top): -90deg
     // Axis 1 (Bottom Right): 30deg
     // Axis 2 (Bottom Left): 150deg
     const angleInRad = (axisIndex === 0 ? -90 : axisIndex === 1 ? 30 : 150) * (Math.PI / 180);
-    const x = center + val * Math.cos(angleInRad);
-    const y = center + val * Math.sin(angleInRad);
+    const x = CENTER + val * Math.cos(angleInRad);
+    const y = CENTER + val * Math.sin(angleInRad);
     return `${x.toFixed(1)},${y.toFixed(1)}`;
   };
 
@@ -220,12 +222,11 @@ function ReportDetails() {
   ].join(" ");
 
   const gridPolygonPoints = (radiusMultiplier: number) => {
-    const center = 150;
-    const maxRadius = 100 * radiusMultiplier;
+    const maxRadius = MAX_RADIUS * radiusMultiplier;
     return [
-      `${center},${center - maxRadius}`,
-      `${center + maxRadius * 0.866},${center + maxRadius * 0.5}`,
-      `${center - maxRadius * 0.866},${center + maxRadius * 0.5}`
+      `${CENTER},${CENTER - maxRadius}`,
+      `${CENTER + maxRadius * 0.866},${CENTER + maxRadius * 0.5}`,
+      `${CENTER - maxRadius * 0.866},${CENTER + maxRadius * 0.5}`
     ].join(" ");
   };
 
@@ -337,9 +338,9 @@ function ReportDetails() {
         >
           <div className="flex items-center gap-2.5">
             <CheckCircle className="w-4 h-4 text-agy-green animate-pulse" />
-            <span>INTELLIGENT RUN PROOFS REGISTERED SECURELY ON BLOCKCHAIN</span>
+            <span>INTELLIGENT RUN PROOFS VERIFIED SECURELY BY ANTIGRAVITY ENGINE</span>
           </div>
-          <span className="opacity-60 hidden md:block">TX: {sessionId.substring(0, 14)}...</span>
+          <span className="opacity-60 hidden md:block">RUN: {sessionId.substring(0, 14)}...</span>
         </motion.div>
 
         {/* Certificate Scorecard Header Card */}
@@ -437,17 +438,17 @@ function ReportDetails() {
               ) : (
                 <Lock className="w-3.5 h-3.5 print:hidden" />
               )}
-              <span>{isPassing ? "GOOGLE VENTURES PASSED" : "REVIEW REQUIRED"}</span>
+              <span>{isPassing ? "EVALUATION PASSED" : "REVIEW REQUIRED"}</span>
             </div>
 
-            {/* Cryptographic Verification Seal badge in sidebar */}
+            {/* Automated Verification Seal badge in sidebar */}
             <div className="mt-5 flex items-center gap-3.5 bg-bg-dark/40 border border-slate-800/80 p-3 rounded-xl w-full print-black-border relative z-10">
               <div className="w-10 h-10 rounded-full border border-agy-cyan/15 bg-bg-dark flex items-center justify-center overflow-hidden shrink-0 shadow-[0_0_10px_rgba(0,240,255,0.1)] print:border-slate-300 print:bg-white">
-                <img src="/assets/verification_seal.png" className="w-full h-full object-contain filter brightness-110 print:brightness-100" alt="Holographic Verification Seal" />
+                <img src="/assets/verification_seal.png" className="w-full h-full object-contain filter brightness-110 print:brightness-100" alt="Sandbox Verification Seal" />
               </div>
               <div className="text-left font-mono">
-                <span className="text-[9px] text-agy-green block uppercase tracking-wider font-extrabold print:text-slate-800">CRYPTO SEAL CERTIFIED</span>
-                <span className="text-[8px] text-text-muted block mt-0.5 uppercase tracking-wide print:text-slate-400">VERIFIED COMPILER NODE</span>
+                <span className="text-[9px] text-agy-green block uppercase tracking-wider font-extrabold print:text-slate-800">SANDBOX RUN VERIFIED</span>
+                <span className="text-[8px] text-text-muted block mt-0.5 uppercase tracking-wide print:text-slate-400">VERIFIED ISOLATED NODE</span>
               </div>
             </div>
           </div>
@@ -474,10 +475,10 @@ function ReportDetails() {
               <polygon points={gridPolygonPoints(0.5)} className="fill-none stroke-slate-800/40 print:stroke-slate-100" strokeWidth="1" />
               <polygon points={gridPolygonPoints(0.25)} className="fill-none stroke-slate-800/20 print:stroke-slate-100/50" strokeWidth="1" />
 
-              {/* Axis Grid lines connecting center (150, 150) to corners */}
-              <line x1="150" y1="150" x2="150" y2="50" className="stroke-slate-800 print:stroke-slate-200" strokeWidth="1" />
-              <line x1="150" y1="150" x2="236.6" y2="200" className="stroke-slate-800 print:stroke-slate-200" strokeWidth="1" />
-              <line x1="150" y1="150" x2="63.4" y2="200" className="stroke-slate-800 print:stroke-slate-200" strokeWidth="1" />
+              {/* Axis Grid lines connecting center to corners */}
+              <line x1={CENTER} y1={CENTER} x2={CENTER} y2={CENTER - MAX_RADIUS} className="stroke-slate-800 print:stroke-slate-200" strokeWidth="1" />
+              <line x1={CENTER} y1={CENTER} x2={(CENTER + MAX_RADIUS * 0.866).toFixed(1)} y2={(CENTER + MAX_RADIUS * 0.5).toFixed(1)} className="stroke-slate-800 print:stroke-slate-200" strokeWidth="1" />
+              <line x1={CENTER} y1={CENTER} x2={(CENTER - MAX_RADIUS * 0.866).toFixed(1)} y2={(CENTER + MAX_RADIUS * 0.5).toFixed(1)} className="stroke-slate-800 print:stroke-slate-200" strokeWidth="1" />
 
               {/* Active candidate skill distribution polygon (glowing filled dynamic theme triangle) */}
               <polygon
@@ -487,14 +488,14 @@ function ReportDetails() {
                 strokeWidth="2.5"
               />
 
-              {/* Axis Vertex Labels */}
-              <text x="150" y="32" className="fill-agy-green font-mono text-[9px] font-bold text-center uppercase tracking-wider print:fill-slate-800" textAnchor="middle">
+              {/* Axis Vertex Labels (Centered & adjusted to prevent horizontal/vertical bounding box overflow) */}
+              <text x={CENTER} y={CENTER - MAX_RADIUS - 15} className="fill-agy-green font-mono text-[9px] font-bold text-center uppercase tracking-wider print:fill-slate-800" textAnchor="middle">
                 AGENT FLOW ({report.score_agentic_flow}%)
               </text>
-              <text x="260" y="215" className="fill-agy-cyan font-mono text-[9px] font-bold uppercase tracking-wider print:fill-slate-800" textAnchor="middle">
+              <text x={CENTER + MAX_RADIUS * 0.866 + 10} y={CENTER + MAX_RADIUS * 0.5 + 15} className="fill-agy-cyan font-mono text-[9px] font-bold uppercase tracking-wider print:fill-slate-800" textAnchor="middle">
                 SKILL WRITING ({report.score_skill_verification}%)
               </text>
-              <text x="40" y="215" className="fill-agy-violet font-mono text-[9px] font-bold uppercase tracking-wider print:fill-slate-800" textAnchor="middle">
+              <text x={CENTER - MAX_RADIUS * 0.866 - 10} y={CENTER + MAX_RADIUS * 0.5 + 15} className="fill-agy-violet font-mono text-[9px] font-bold uppercase tracking-wider print:fill-slate-800" textAnchor="middle">
                 PROMPT SECURE ({report.score_prompt_engineering}%)
               </text>
             </svg>
@@ -502,17 +503,17 @@ function ReportDetails() {
 
         </div>
 
-        {/* Qualitative Structured Review Panel (Google Ventures) */}
+        {/* Qualitative Structured Review Panel */}
         <div className="relative rounded-2xl border border-slate-800 bg-bg-panel/40 p-8 overflow-hidden shadow-[20px_20px_40px_rgba(0,0,0,0.3)] print-certificate-container">
           <div className="absolute top-0 inset-x-0 h-[1.5px] bg-gradient-to-r from-transparent via-agy-violet/40 to-transparent print-hidden" />
           
           <h3 className="font-extrabold text-sm tracking-wide flex items-center gap-2.5 font-mono print:text-black">
             <Cpu className="w-4 h-4 text-agy-violet animate-pulse print:hidden" />
-            GOOGLE VENTURES PARTNER SUMMATION REVIEW
+            ANTICODE SYSTEM EVALUATION REVIEW
           </h3>
           
           <div className="mt-4 p-5 font-mono text-xs leading-relaxed text-text-muted bg-bg-dark/80 rounded-xl border border-slate-800/80 shadow-[inset_0_2px_4px_rgba(0,0,0,0.4)] relative print-black-border">
-            <span className="text-agy-violet block mb-2 font-semibold print:text-slate-500">{"// Consensus Output from Best-of-3 Evaluators"}</span>
+            <span className="text-agy-violet block mb-2 font-semibold print:text-slate-500">{"// Single Gemini Judge Output"}</span>
             <p className="text-white print:text-slate-800 leading-relaxed">
               &quot;{report.summary_review}&quot;
             </p>
@@ -538,11 +539,22 @@ function ReportDetails() {
         </div>
 
         {/* Navigation Return */}
-        <div className="text-center pt-6 print-hidden">
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-6 pt-6 print-hidden">
+          <button
+            type="button"
+            onClick={() => router.push("/dashboard")}
+            className="group font-mono text-xs text-text-muted hover:text-white transition-colors cursor-pointer flex items-center gap-1.5"
+          >
+            <ChevronLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
+            <span>RETURN TO SYSTEM DASHBOARD</span>
+          </button>
+
+          <div className="hidden sm:block w-[1px] h-4 bg-slate-800" />
+
           <button
             type="button"
             onClick={() => router.push("/problems")}
-            className="group font-mono text-xs text-text-muted hover:text-white transition-colors cursor-pointer flex items-center gap-1.5 mx-auto"
+            className="group font-mono text-xs text-text-muted hover:text-white transition-colors cursor-pointer flex items-center gap-1.5"
           >
             <span>RETURN TO MATRIX COMPILER</span>
             <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />

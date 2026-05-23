@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { runConsensusEvaluation } from "@/lib/evaluation/evaluator";
+import { runSingleEvaluation } from "@/lib/evaluation/evaluator";
 
 function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
@@ -14,8 +14,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Missing problemSlug or candidateCode" }, { status: 400 });
     }
 
-    // Call the Best-of-3 Gemini grading service, now equipped with dynamic rubrics!
-    const gradeReport = await runConsensusEvaluation(
+    // Call the single-pass Gemini grading service, equipped with dynamic rubrics.
+    const gradeReport = await runSingleEvaluation(
       problemSlug,
       candidateCode,
       executionLogs || [],

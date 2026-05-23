@@ -3,8 +3,10 @@ import { spawn } from "child_process";
 import path from "path";
 import fs from "fs";
 import { supabase } from "@/lib/supabase/client";
+import { refreshOutdatedStarterFiles } from "@/lib/workspace/starter-repairs";
 
 const SANDBOX_ROOT = path.resolve(process.cwd(), "candidate_workspace");
+const TEMPLATES_ROOT = path.resolve(process.cwd(), "candidate_workspace_templates");
 const BIN_ROOT = path.resolve(process.cwd(), "bin");
 const HIDDEN_TESTS_ROOT = path.resolve(process.cwd(), "candidate_workspace_hidden_tests");
 const SDK_RUNNER = path.resolve(process.cwd(), "scripts/antigravity_sdk_runner.py");
@@ -303,6 +305,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Sandbox directory not initialized. Load workspace first." }, { status: 400 });
     }
 
+    refreshOutdatedStarterFiles(problemSlug, path.join(TEMPLATES_ROOT, problemSlug), baseSandboxDir);
     const tokens = normalizeCommand(tokenizeCommand(command));
 
     // Handle stateful directory traversal (cd) in-process

@@ -1,32 +1,27 @@
 ---
 name: ai-evaluations
-description: Guidelines for AI code evaluations, the Gemini 3.5 Best-of-3 consensus engine, scoring metrics, and database schemas.
+description: Guidelines for AI code evaluations, the Gemini 3.5 single-pass judge, scoring metrics, and database schemas.
 ---
 
 # AntiCode AI Interview Evaluations
 
 This skill governs the code grading pipeline, which connects directly to the Google Gemini Developer API to provide high-fidelity scorecards of candidate interview submissions.
 
-## 1. Consensus Evaluation Engine Architecture
-To eliminate LLM grading variance, the evaluation system in [src/lib/evaluation/evaluator.ts](file:///Users/rana-ms-work/Documents/gemini-hackathon/src/lib/evaluation/evaluator.ts) uses a **Best-of-3 Consensus Engine**:
+## 1. Evaluation Engine Architecture
+To keep evaluation latency and cost low, the evaluation system in [src/lib/evaluation/evaluator.ts](file:///Users/rana-ms-work/Documents/gemini-hackathon/src/lib/evaluation/evaluator.ts) uses a **single-pass Gemini judge**:
 
 ```mermaid
 graph TD
     A[Candidate Submission] --> B[Generate Grade Prompt]
-    B --> C1[Gemini Grading Call 1]
-    B --> C2[Gemini Grading Call 2]
-    B --> C3[Gemini Grading Call 3]
-    C1 --> D[Filter Valid JSON Responses]
-    C2 --> D
-    C3 --> D
-    D --> E[Sort by score_aggregate]
-    E --> F[Select Median Result]
-    F --> G[Write evaluation_reports Row]
+    B --> C[Gemini Grading Call]
+    C --> D[Validate Structured JSON Response]
+    D --> E[Compute Weighted Aggregate]
+    E --> F[Write evaluation_reports Row]
 ```
 
-1. **Parallel Execution**: Triggers three concurrent API calls to Gemini `gemini-3.5-flash` using `Promise.all`.
+1. **Single Execution**: Triggers one API call to Gemini `gemini-3.5-flash`.
 2. **Schema-Specified JSON**: Uses Gemini's `responseSchema` configuration to enforce structured output.
-3. **Consensus Selection**: Sorts the returning payloads by `score_aggregate` and selects the **median** scorecard.
+3. **Weighted Aggregation**: Computes `score_aggregate` from the configured rubric weights.
 
 ## 2. Evaluation Metrics (0 to 100)
 Candidates are scored across three dimensions:
@@ -60,7 +55,7 @@ The evaluator uses the following JSON schema config:
 ```
 
 ## 4. Fallback Grading Stability
-If `GEMINI_API_KEY` is not present, or if all parallel API threads crash, the service uses `generateFallbackMockGrade` in [src/lib/evaluation/evaluator.ts](file:///Users/rana-ms-work/Documents/gemini-hackathon/src/lib/evaluation/evaluator.ts) to provide extremely realistic scorecards tailored to each `problemSlug`, maintaining UI/UX integrity.
+If `GEMINI_API_KEY` is not present, or if the API call fails, the service uses `generateFallbackMockGrade` in [src/lib/evaluation/evaluator.ts](file:///Users/rana-ms-work/Documents/gemini-hackathon/src/lib/evaluation/evaluator.ts) to provide extremely realistic scorecards tailored to each `problemSlug`, maintaining UI/UX integrity.
 
 ## 5. Guidelines for Future Updates
 > [!TIP]

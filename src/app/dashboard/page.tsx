@@ -471,7 +471,7 @@ export default function DashboardPage() {
       );
 
       if (error) throwDashboardSyncError("Daily session creation failed", error);
-      router.push(`/workspace?problem=${dailyChallenge.problem.slug}&session=${data.id}`);
+      router.push(`/workspace?problem=${dailyChallenge.problem.slug}&session=${data.id}&reset=true`);
     } catch (err) {
       setErrorMessage(getDashboardErrorMessage(err));
     } finally {

@@ -16,7 +16,7 @@ Welcome, Agent. This repository houses **AntiCode**, a premium, futuristic AI te
 - **Styling System**: [Tailwind CSS v4](https://tailwindcss.com) (leveraging `@tailwindcss/postcss`) with custom cyberpunk glow filters and CSS grids.
 - **Animations & Micro-interactions**: [Framer Motion v12](https://motion.dev) for real-time presence indicators, typewriter lines, and progressive loaders.
 - **Database, Realtime & Auth**: [Supabase](https://supabase.com) (integrated via `@supabase/supabase-js`) with complete Row-Level Security (RLS) policies and real-time streaming publications.
-- **AI Evaluation Engine**: [Google Gemini 3.5 Flash](https://deepmind.google/technologies/gemini/) utilizing structured JSON schemas and high-throughput concurrent consensus matching.
+- **AI Evaluation Engine**: [Google Gemini 3.5 Flash](https://deepmind.google/technologies/gemini/) utilizing structured JSON schemas with single-pass judge scoring.
 - **Virtual Container Sandboxes**: Programmatic provisioning of isolated Google Compute Engine (GCE) Ubuntu instances.
 - **Web App Route Map**: Keep [webapp_pages.md](file:///Users/rana-ms-work/Documents/gemini-hackathon/webapp_pages.md) synchronized with every App Router page, authenticated dashboard flow, and API route handler.
 
@@ -31,7 +31,7 @@ To assist your development on each specialized layer of this codebase, consult o
     *   **Guideline**: Ensure any new challenge is seeded *both* inside [supabase/schema.sql](file:///Users/rana-ms-work/Documents/gemini-hackathon/supabase/schema.sql) and the offline-fallback object `LOCAL_FALLBACK_PROBLEMS` inside [problems/page.tsx](file:///Users/rana-ms-work/Documents/gemini-hackathon/src/app/problems/page.tsx).
 
 2.  ### 🤖 [AI Interview Evaluations](file:///Users/rana-ms-work/Documents/gemini-hackathon/skills/ai-evaluations/SKILL.md)
-    *   **Scope**: High-fidelity grading prompts, concurrent Best-of-3 Gemini scoring, consensus resolution logic, and schema-enforced response payloads.
+    *   **Scope**: High-fidelity grading prompts, single-pass Gemini scoring, weighted rubric aggregation, and schema-enforced response payloads.
     *   **Guideline**: Keep evaluation reviews objective and supportive, following the VC evaluation tone. Manage fallback grades inside [evaluator.ts](file:///Users/rana-ms-work/Documents/gemini-hackathon/src/lib/evaluation/evaluator.ts).
 
 3.  ### 🎨 [UI/UX Aesthetics & Animation](file:///Users/rana-ms-work/Documents/gemini-hackathon/skills/ui-ux-design/SKILL.md)
