@@ -209,6 +209,7 @@ function buildExecutionEnv(tokens: string[], sandboxDir: string, problemSlug: st
 
   // Inject API keys for ALL runs to enable direct run_tests.py executions to query Gemini APIs
   if (process.env.GEMINI_API_KEY) execEnv.GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+  if (process.env.AGY_SDK_MODEL) execEnv.AGY_SDK_MODEL = process.env.AGY_SDK_MODEL;
   if (process.env.GEMINI_CASE_MODEL) execEnv.GEMINI_CASE_MODEL = process.env.GEMINI_CASE_MODEL;
 
   return execEnv;

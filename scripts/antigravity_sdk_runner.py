@@ -42,6 +42,10 @@ def sdk_version() -> str:
         return "not-installed"
 
 
+def selected_model() -> str:
+    return os.environ.get("AGY_SDK_MODEL") or os.environ.get("GEMINI_CASE_MODEL") or "gemini-3.5-flash"
+
+
 def validate_sdk_available() -> bool:
     try:
         import google.antigravity  # noqa: F401
@@ -119,11 +123,15 @@ def build_prompt(problem: str, mode: str, user_prompt: str) -> str:
 
 def print_status(workspace: pathlib.Path, problem: str) -> int:
     available = validate_sdk_available()
+    api_key_configured = bool(os.environ.get("GEMINI_API_KEY"))
     safe_print(f"[antigravity sdk] package google-antigravity=={sdk_version()}")
+    safe_print(f"[antigravity sdk] model={selected_model()}")
+    safe_print(f"[antigravity sdk] gemini_api_key={'configured' if api_key_configured else 'missing'}")
     safe_print(f"[antigravity sdk] workspace={workspace}")
     safe_print(f"[antigravity sdk] problem={problem}")
     safe_print(f"[antigravity sdk] file tools={'ready' if available else 'unavailable'}")
-    return 0 if available else 2
+    safe_print(f"[antigravity sdk] live gemini chat={'ready' if available and api_key_configured else 'unavailable'}")
+    return 0 if available and api_key_configured else 2
 
 
 def shorten(value: object) -> str:
@@ -152,7 +160,7 @@ async def run_sdk_agent(workspace: pathlib.Path, problem: str, mode: str, prompt
     app_data_dir.mkdir(parents=True, exist_ok=True)
 
     before = snapshot_workspace(workspace)
-    model = os.environ.get("AGY_SDK_MODEL") or os.environ.get("GEMINI_CASE_MODEL") or "gemini-3.5-flash"
+    model = selected_model()
     safe_print(f"[antigravity sdk] Official SDK active: google-antigravity=={sdk_version()}")
     safe_print(f"[antigravity sdk] Model: {model}")
     safe_print(f"[antigravity sdk] Workspace file tools are scoped to {workspace}")
