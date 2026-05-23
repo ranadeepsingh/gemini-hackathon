@@ -656,6 +656,134 @@ export default function Home() {
           </div>
         </section>
 
+        {/* AntiCode's Agentic Architecture / Google Cloud & Gemini Engine Section */}
+        <section className="mt-32 border-t border-border-subtle/40 pt-20">
+          <div className="text-center flex flex-col items-center gap-3 mb-16">
+            <div className="inline-flex items-center gap-2 bg-agy-cyan/10 text-agy-cyan px-3 py-1 rounded-full text-xs font-mono border border-agy-cyan/20 w-fit">
+              <Cpu className="w-3.5 h-3.5 text-agy-cyan" />
+              INTELLIGENT RUNTIME ENGINE
+            </div>
+            <h2 className="text-3xl sm:text-5xl font-extrabold tracking-tight">
+              Engineered on <span className="text-transparent bg-clip-text bg-gradient-to-r from-agy-cyan to-agy-green">Google Cloud</span> & <span className="text-transparent bg-clip-text bg-gradient-to-r from-agy-green to-agy-violet">Gemini 3.5</span>
+            </h2>
+            <p className="text-text-muted max-w-2xl leading-relaxed mt-2 text-sm sm:text-base">
+              AntiCode is a uniquely structured verification platform. We replace traditional quizzes with a live, containerized developer environment governed by state-of-the-art AI orchestration.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-7xl mx-auto">
+            
+            {/* Card 1: GCE Sandbox */}
+            <motion.div 
+              whileHover={{ y: -5 }}
+              transition={{ duration: 0.2 }}
+              className="bg-bg-panel/40 border border-border-subtle/80 hover:border-agy-cyan/50 rounded-xl p-6 backdrop-blur-md transition-all relative overflow-hidden group flex flex-col justify-between min-h-[300px]"
+            >
+              <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-agy-cyan/30 to-transparent group-hover:via-agy-cyan" />
+              <div className="absolute -right-4 -top-4 w-24 h-24 bg-agy-cyan/5 blur-xl rounded-full pointer-events-none" />
+              
+              <div className="space-y-4">
+                <div className="w-10 h-10 rounded-lg bg-agy-cyan/10 flex items-center justify-center border border-agy-cyan/30 text-agy-cyan shadow-[0_0_10px_rgba(0,240,255,0.1)]">
+                  <Terminal className="w-5 h-5" />
+                </div>
+                <h3 className="text-lg font-bold font-mono text-text-main flex items-center gap-1.5">
+                  GCE Sandbox Virtualization
+                </h3>
+                <p className="text-text-muted text-xs leading-relaxed">
+                  Every test session provisions an isolated, clean Google Compute Engine (GCE) Ubuntu container. This enforces secure container bounds while candidate scripts execute in a real-world runtime context.
+                </p>
+              </div>
+              
+              <div className="border-t border-border-subtle/40 pt-4 mt-6 flex items-center justify-between text-[10px] font-mono uppercase tracking-wider text-text-muted">
+                <span>Infrastructure</span>
+                <span className="text-agy-cyan font-bold">GCP West1</span>
+              </div>
+            </motion.div>
+
+            {/* Card 2: Declarative Skills */}
+            <motion.div 
+              whileHover={{ y: -5 }}
+              transition={{ duration: 0.2 }}
+              className="bg-bg-panel/40 border border-border-subtle/80 hover:border-agy-green/50 rounded-xl p-6 backdrop-blur-md transition-all relative overflow-hidden group flex flex-col justify-between min-h-[300px]"
+            >
+              <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-agy-green/30 to-transparent group-hover:via-agy-green" />
+              <div className="absolute -right-4 -top-4 w-24 h-24 bg-agy-green/5 blur-xl rounded-full pointer-events-none" />
+              
+              <div className="space-y-4">
+                <div className="w-10 h-10 rounded-lg bg-agy-green/10 flex items-center justify-center border border-agy-green/30 text-agy-green shadow-[0_0_10px_rgba(0,255,102,0.1)]">
+                  <FileCode className="w-5 h-5" />
+                </div>
+                <h3 className="text-lg font-bold font-mono text-text-main flex items-center gap-1.5">
+                  Declarative SDK Skills
+                </h3>
+                <p className="text-text-muted text-xs leading-relaxed">
+                  Evaluate if developers can author modular, safe instructions using the official Google Antigravity SDK. Candidate skills (like Log Stream Parser or K8s Triage) are run against extreme, adversarial mock data pipelines.
+                </p>
+              </div>
+              
+              <div className="border-t border-border-subtle/40 pt-4 mt-6 flex items-center justify-between text-[10px] font-mono uppercase tracking-wider text-text-muted">
+                <span>Orchestration</span>
+                <span className="text-agy-green font-bold">Antigravity SDK</span>
+              </div>
+            </motion.div>
+
+            {/* Card 3: Single-Pass Gemini Judge */}
+            <motion.div 
+              whileHover={{ y: -5 }}
+              transition={{ duration: 0.2 }}
+              className="bg-bg-panel/40 border border-border-subtle/80 hover:border-agy-violet/50 rounded-xl p-6 backdrop-blur-md transition-all relative overflow-hidden group flex flex-col justify-between min-h-[300px]"
+            >
+              <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-agy-violet/30 to-transparent group-hover:via-agy-violet" />
+              <div className="absolute -right-4 -top-4 w-24 h-24 bg-agy-violet/5 blur-xl rounded-full pointer-events-none" />
+              
+              <div className="space-y-4">
+                <div className="w-10 h-10 rounded-lg bg-agy-violet/10 flex items-center justify-center border border-agy-violet/30 text-agy-violet shadow-[0_0_10px_rgba(139,92,246,0.1)]">
+                  <BrainCircuit className="w-5 h-5" />
+                </div>
+                <h3 className="text-lg font-bold font-mono text-text-main flex items-center gap-1.5">
+                  Structured JSON Scoring
+                </h3>
+                <p className="text-text-muted text-xs leading-relaxed">
+                  Our evaluation backend uses Google Gemini 3.5 as a single-pass scoring judge. By enforcing rigid, complex JSON schemas on response outputs, it returns reliable scorecard metrics and granular review notes.
+                </p>
+              </div>
+              
+              <div className="border-t border-border-subtle/40 pt-4 mt-6 flex items-center justify-between text-[10px] font-mono uppercase tracking-wider text-text-muted">
+                <span>Evaluation Model</span>
+                <span className="text-agy-violet font-bold">Gemini 3.5 Flash</span>
+              </div>
+            </motion.div>
+
+            {/* Card 4: Detailed Token Telemetry */}
+            <motion.div 
+              whileHover={{ y: -5 }}
+              transition={{ duration: 0.2 }}
+              className="bg-bg-panel/40 border border-border-subtle/80 hover:border-agy-cyan/50 rounded-xl p-6 backdrop-blur-md transition-all relative overflow-hidden group flex flex-col justify-between min-h-[300px]"
+            >
+              <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-agy-cyan/30 to-transparent group-hover:via-agy-cyan" />
+              <div className="absolute -right-4 -top-4 w-24 h-24 bg-agy-cyan/5 blur-xl rounded-full pointer-events-none" />
+              
+              <div className="space-y-4">
+                <div className="w-10 h-10 rounded-lg bg-agy-cyan/10 flex items-center justify-center border border-agy-cyan/30 text-agy-cyan shadow-[0_0_10px_rgba(0,240,255,0.1)]">
+                  <Activity className="w-5 h-5" />
+                </div>
+                <h3 className="text-lg font-bold font-mono text-text-main flex items-center gap-1.5">
+                  Token Telemetry & Cost HUD
+                </h3>
+                <p className="text-text-muted text-xs leading-relaxed">
+                  Tracks full candidate prompt telemetry: input, output, and explicit thinking tokens are measured and mapped to simulated workspace costs, assessing analytical stewardship alongside execution.
+                </p>
+              </div>
+              
+              <div className="border-t border-border-subtle/40 pt-4 mt-6 flex items-center justify-between text-[10px] font-mono uppercase tracking-wider text-text-muted">
+                <span>Observability</span>
+                <span className="text-agy-cyan font-bold">Real-time Telemetry</span>
+              </div>
+            </motion.div>
+
+          </div>
+        </section>
+
       </main>
 
       {/* Footer */}

@@ -21,5 +21,15 @@ class TestLogParserSkill(unittest.TestCase):
         self.assertEqual(res.get("status"), 404)
         self.assertEqual(res.get("ip"), "10.0.0.1")
 
+    def test_skill_markdown_declaration(self):
+        skill_path = "skills/log_parser/SKILL.md"
+        self.assertTrue(os.path.exists(skill_path), "skills/log_parser/SKILL.md must exist!")
+        with open(skill_path, "r", encoding="utf-8") as f:
+            content = f.read()
+        self.assertIn("name: log_parser", content, "Frontmatter must define name: log_parser")
+        self.assertIn("description:", content, "Frontmatter must define description")
+        self.assertNotIn("log_parser_unconfigured", content, "SKILL.md frontmatter must be updated from the starter stub")
+        self.assertNotIn("Custom Log Parser Skill Starter", content, "SKILL.md content must be updated from the starter stub")
+
 if __name__ == "__main__":
     unittest.main()

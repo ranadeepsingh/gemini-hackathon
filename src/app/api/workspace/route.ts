@@ -316,29 +316,23 @@ export async function POST(req: NextRequest) {
     if (problemSlug === "skill-log-parser") {
       const lowerFilename = filename.toLowerCase();
       const isAllowed =
-        lowerFilename === "skills/log_parser/scripts/parse.py" ||
-        lowerFilename.endsWith("/skills/log_parser/scripts/parse.py") ||
-        lowerFilename === "parse.py" ||
-        lowerFilename.endsWith("/parse.py");
+        lowerFilename === "skills/log_parser/skill.md" ||
+        lowerFilename.endsWith("/skills/log_parser/skill.md") ||
+        lowerFilename === "skill.md" ||
+        lowerFilename.endsWith("/skill.md");
       if (!isAllowed) {
         return NextResponse.json(
-          { error: "Access Denied: Only skills/log_parser/scripts/parse.py is editable in this task." },
+          { error: "Access Denied: Only skills/log_parser/SKILL.md is editable in this task." },
           { status: 403 }
         );
       }
     }
 
     if (problemSlug === "python-backend-io-service") {
-      const lowerFilename = filename.toLowerCase();
-      const isAllowed =
-        lowerFilename === "app.py" ||
-        lowerFilename.endsWith("/app.py");
-      if (!isAllowed) {
-        return NextResponse.json(
-          { error: "Access Denied: Only app.py is editable in this task." },
-          { status: 403 }
-        );
-      }
+      return NextResponse.json(
+        { error: "Access Denied: In this task, you must use the agy agent to make edits. Direct edits are disabled." },
+        { status: 403 }
+      );
     }
 
     fs.mkdirSync(path.dirname(targetPath), { recursive: true });

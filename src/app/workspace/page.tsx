@@ -446,17 +446,14 @@ function isReadOnlyFile(filePath: string, problemSlug?: string): boolean {
   }
   if (problemSlug === "skill-log-parser") {
     return !(
-      lower === "skills/log_parser/scripts/parse.py" ||
-      lower.endsWith("/skills/log_parser/scripts/parse.py") ||
-      lower === "parse.py" ||
-      lower.endsWith("/parse.py")
+      lower === "skills/log_parser/skill.md" ||
+      lower.endsWith("/skills/log_parser/skill.md") ||
+      lower === "skill.md" ||
+      lower.endsWith("/skill.md")
     );
   }
   if (problemSlug === "python-backend-io-service") {
-    return !(
-      lower === "app.py" ||
-      lower.endsWith("/app.py")
-    );
+    return true;
   }
   return false;
 }
