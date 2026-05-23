@@ -320,6 +320,9 @@ ALTER TABLE public.evaluation_reports
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_evaluation_reports_session_id
     ON public.evaluation_reports(session_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_profiles_username
+    ON public.profiles(username)
+    WHERE username IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_problems_category_id ON public.problems(category_id);
 CREATE INDEX IF NOT EXISTS idx_problem_versions_problem_id ON public.problem_versions(problem_id);
 CREATE INDEX IF NOT EXISTS idx_challenge_rubrics_problem_id ON public.challenge_rubrics(problem_id);

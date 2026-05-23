@@ -191,7 +191,7 @@ Individual score breakdown records corresponding to active rubrics for the given
 *   `CREATE TABLE IF NOT EXISTS` declares all canonical table shapes.
 *   `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` backfills additive fields that older projects may be missing.
 *   Check constraints that evolved during the formulation plan, such as `profiles_role_check` and `interview_sessions_session_type_check`, are dropped and recreated idempotently.
-*   Runtime indexes are declared with `CREATE INDEX IF NOT EXISTS`, including `idx_evaluation_reports_session_id`, which enforces the one-report-per-session invariant.
+*   Runtime indexes are declared with `CREATE INDEX IF NOT EXISTS`, including `idx_profiles_username` for unique non-null usernames and `idx_evaluation_reports_session_id`, which enforces the one-report-per-session invariant.
 *   Realtime publication membership is checked before each `ALTER PUBLICATION`, avoiding destructive `DROP PUBLICATION` resets.
 
 ---
