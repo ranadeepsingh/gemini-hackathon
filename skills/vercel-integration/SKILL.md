@@ -7,6 +7,8 @@ description: Guidelines for Vercel project setups, the Vercel API SDK, token str
 
 This skill governs the automated and programmatic delivery of the AntiCode platform to Vercel's edge hosting environment using the official `@vercel/sdk`.
 
+**Production URL**: [https://anticode-rana-s-projects11.vercel.app](https://anticode-rana-s-projects11.vercel.app)
+
 ## 1. Automated Setup Script (`scripts/vercel-setup.mjs`)
 The platform includes an automated deployment manager in [scripts/vercel-setup.mjs](file:///Users/rana-ms-work/Documents/gemini-hackathon/scripts/vercel-setup.mjs). This node script performs these primary operations:
 
@@ -19,11 +21,12 @@ sequenceDiagram
     
     CLI->>ENV: Extract VERCEL_TOKEN
     CLI->>GIT: Query "git remote get-url origin"
-    CLI->>VER: GET /v9/projects/gemini-hackathon (Check project)
+    CLI->>VER: Read linked Vercel project or find project "anticode"
     alt Project does not exist
-        CLI->>VER: POST /v9/projects (Create "gemini-hackathon")
+        CLI->>VER: POST /v9/projects (Create "anticode")
     end
-    CLI->>VER: POST /v13/deployments (Trigger production build for main)
+    CLI->>GIT: Fetch origin/main and resolve latest SHA
+    CLI->>VER: POST /v13/deployments (Trigger production build for origin/main)
     VER-->>CLI: Returns URL & Deployment Metadata
 ```
 
@@ -40,8 +43,8 @@ npm run vercel-setup
 
 The script will:
 1. Parse the environment for credentials.
-2. Confirm if the `gemini-hackathon` project exists on the Vercel workspace. If not, it provisions it automatically under the Next.js framework configuration.
-3. Call `vercel.deployments.createDeployment()` to initiate a production deployment on the `main` branch.
+2. Confirm if the linked `anticode` project exists on the Vercel workspace. If not, it provisions it automatically under the Next.js framework configuration.
+3. Call `vercel.deployments.createDeployment()` to initiate a production deployment from the current `origin/main` SHA.
 4. Output clickable build logs, deployment identifiers, and live production endpoints directly to the terminal.
 
 ## 4. Guidelines for Future Updates

@@ -2,6 +2,8 @@
 
 Welcome to **AntiCode**, a premium, high-fidelity AI technical interview and coding simulation platform. AntiCode integrates state-of-the-art interactive coding sandbox environments, live Google Gemini 3.5 evaluator integrations, real-time telemetry streaming, and role-based administration panels to deliver a world-class workspace cockpit for candidates and interviewers alike.
 
+**Production URL**: [https://anticode-rana-s-projects11.vercel.app](https://anticode-rana-s-projects11.vercel.app)
+
 ```
 ====================================================================
   🌌 A N T I C O D E   A C T I V E   C O C K P I T   S Y S T E M S 🌌
@@ -54,6 +56,11 @@ This cockpit grants interviewers high-level, escalated administrative capabiliti
 ---
 
 ## 🚀 Quick Start Guide
+
+### Production Deployment
+The Vercel project is linked to `ranadeepsingh/gemini-hackathon`, with `main` configured as the production branch. Any future commit pushed to `origin/main` should automatically deploy to:
+
+[https://anticode-rana-s-projects11.vercel.app](https://anticode-rana-s-projects11.vercel.app)
 
 ### 1. Seeding / Syncing Test Users
 To manually recreate or synchronize the test users in your Supabase DB instance using our automated admin client script:
