@@ -21,8 +21,10 @@ import {
   Layers,
   FileCode,
   CheckCircle,
-  Database
+  Database,
+  X
 } from "lucide-react";
+import Link from "next/link";
 import AuthAwareHomeLink from "@/components/AuthAwareHomeLink";
 import { supabase } from "@/lib/supabase/client";
 
@@ -78,6 +80,64 @@ function stripAnsiCodes(text: string): string {
   return text.replace(/\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])/g, "");
 }
 
+const MAX_TERMINAL_LOGS = 180;
+const MAX_TERMINAL_LINE_LENGTH = 700;
+
+function terminalPrompt(cwd: string): string {
+  return `agy 🧠 ${cwd ? `(/${cwd})` : "(/)"} >> `;
+}
+
+function terminalCommandLine(cwd: string, command: string): string {
+  return `${terminalPrompt(cwd)}${command}`;
+}
+
+function hasTrailingPrompt(logs: string[]): boolean {
+  const lastLine = logs[logs.length - 1] || "";
+  return lastLine.startsWith("agy 🧠") && lastLine.trim().endsWith(">>");
+}
+
+function normalizeTerminalLines(lines: string[]): string[] {
+  return lines
+    .flatMap(line => stripAnsiCodes(line).split("\n"))
+    .map(line => line.trimEnd())
+    .filter(line => line.trim() !== "")
+    .filter(line => !line.startsWith("[METRICS]"))
+    .map(line => line.length > MAX_TERMINAL_LINE_LENGTH ? `${line.slice(0, MAX_TERMINAL_LINE_LENGTH)} ...` : line);
+}
+
+function appendTerminalLogs(previous: string[], lines: string[], cwd: string): string[] {
+  const base = hasTrailingPrompt(previous) ? previous.slice(0, -1) : previous;
+  const next = [...base, ...normalizeTerminalLines(lines)].slice(-MAX_TERMINAL_LOGS);
+  return [...next, terminalPrompt(cwd)];
+}
+
+function replaceTerminalLogs(lines: string[], cwd: string): string[] {
+  return [...normalizeTerminalLines(lines).slice(-MAX_TERMINAL_LOGS), terminalPrompt(cwd)];
+}
+
+function extractMetricUsage(rawText: string): { input: number; output: number; total: number; cost: number } | null {
+  const match = rawText.match(/\[METRICS\] prompt_tokens=(\d+) candidates_tokens=(\d+) total_tokens=(\d+) cost_usd=([\d.]+)/);
+  if (!match) return null;
+  return {
+    input: Number(match[1]),
+    output: Number(match[2]),
+    total: Number(match[3]),
+    cost: Number(match[4])
+  };
+}
+
+function extractThoughtEvents(lines: string[]): string[] {
+  return lines.flatMap(line => {
+    if (line.includes("[THINKING]")) {
+      return [`[STEP] THINKING: ${line.replace(/.*\[THINKING\]/, "").trim()}`];
+    }
+    if (line.includes("[ACTION]")) {
+      return [`[STEP] EXECUTED: ${line.replace(/.*\[ACTION\]/, "").trim()}`];
+    }
+    return [];
+  });
+}
+
 interface WorkspaceRubric {
   id?: string;
   metric_key: string;
@@ -103,6 +163,9 @@ interface ExecuteResponse {
   stdout?: string;
   stderr?: string;
   code?: number;
+  success?: boolean;
+  error?: string;
+  newCwd?: string;
 }
 
 interface GradeReport {
@@ -357,11 +420,15 @@ function WorkspaceCockpit() {
 
   // Dynamic Workspace Files State
   const [files, setFiles] = useState<Record<string, string>>({});
+  const [openTabs, setOpenTabs] = useState<string[]>([]);
   const [activeTab, setActiveFile] = useState<string>("");
   const [code, setCode] = useState<string>("");
 
   const [terminalLogs, setTerminalLogs] = useState<string[]>([]);
   const [terminalInput, setTerminalInput] = useState("");
+  const [terminalCwd, setTerminalCwd] = useState<string>("");
+  const [commandHistory, setCommandHistory] = useState<string[]>([]);
+  const [historyIndex, setHistoryIndex] = useState<number>(-1);
 
   // Realtime Telemetry Stats & Agents State
   const [isRunning, setIsRunning] = useState(false);
@@ -379,6 +446,8 @@ function WorkspaceCockpit() {
   const [audioOn, setAudioOn] = useState(true);
 
   const terminalEndRef = useRef<HTMLDivElement>(null);
+  const terminalViewportRef = useRef<HTMLDivElement>(null);
+  const shouldStickToTerminalBottomRef = useRef(true);
   const thoughtsEndRef = useRef<HTMLDivElement>(null);
 
   // Editor overlapping refs for scroll-synchronization
@@ -500,6 +569,31 @@ function WorkspaceCockpit() {
         lineNumbersRef.current.scrollTop = scrollTop;
       }
     }
+  };
+
+  const handleTerminalViewportScroll = () => {
+    const viewport = terminalViewportRef.current;
+    if (!viewport) return;
+    const distanceFromBottom = viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight;
+    shouldStickToTerminalBottomRef.current = distanceFromBottom < 96;
+  };
+
+  const reconcileWorkspaceFiles = (workspaceData: WorkspaceResponse) => {
+    const fileKeys = Object.keys(workspaceData.files);
+    const nextActive = activeTab && workspaceData.files[activeTab] !== undefined
+      ? activeTab
+      : (workspaceData.activeFile || fileKeys[0] || "");
+
+    setFiles(workspaceData.files);
+    setOpenTabs(prev => {
+      const existingTabs = prev.filter(tab => workspaceData.files[tab] !== undefined);
+      const nextTabs = nextActive && !existingTabs.includes(nextActive)
+        ? [nextActive, ...existingTabs]
+        : existingTabs;
+      return nextTabs.length > 0 ? nextTabs : (nextActive ? [nextActive] : []);
+    });
+    setActiveFile(nextActive);
+    setCode(nextActive ? workspaceData.files[nextActive] || "" : "");
   };
 
   // Keep editor scroll alignment when tabs change
@@ -721,7 +815,7 @@ function WorkspaceCockpit() {
         setTerminalLogs([
           `AntiCode Virtual Sandbox Environment initializing...`,
           `Establishing connection to GCE VM node: us-central-4a...`,
-          `agy 🧠 >> `
+          `agy 🧠 (/) >> `
         ]);
 
         const res = await fetch(`/api/workspace?problemSlug=${problemSlug}`);
@@ -753,7 +847,7 @@ function WorkspaceCockpit() {
           `  • status               ➔ antigravity status`,
           `  • clear                ➔ clear terminal history`,
           `-----------------------------------------------------------------`,
-          `agy 🧠 >> `
+          `agy 🧠 (/) >> `
         ];
         setTerminalLogs(bannerLines);
       } catch (err: unknown) {
@@ -838,10 +932,10 @@ function WorkspaceCockpit() {
 
     setTerminalLogs(prev => [
       ...prev.slice(0, -1),
-      `agy 🧠 >> ${agentCommand}`,
+      `agy 🧠 ${terminalCwd ? `(/${terminalCwd})` : "(/)"} >> ${agentCommand}`,
       `[system] Spawning secure Antigravity CLI daemon...`,
       `[system] Executing autonomous cognitive repair loops inside candidate_workspace/${problemSlug}...`,
-      `agy 🧠 >> `
+      `agy 🧠 ${terminalCwd ? `(/${terminalCwd})` : "(/)"} >> `
     ]);
 
     try {
@@ -851,7 +945,8 @@ function WorkspaceCockpit() {
         body: JSON.stringify({
           problemSlug,
           command: agentCommand,
-          sessionId
+          sessionId,
+          cwd: terminalCwd
         })
       });
       const data = await response.json() as ExecuteResponse;
@@ -885,7 +980,7 @@ function WorkspaceCockpit() {
           setTerminalLogs(prev => [
             ...prev.slice(0, -1),
             `Finished autonomous agent pipeline. Sandbox workspace fully synchronized.`,
-            `agy 🧠 >> `
+            `agy 🧠 ${terminalCwd ? `(/${terminalCwd})` : "(/)"} >> `
           ]);
           return;
         }
@@ -897,7 +992,7 @@ function WorkspaceCockpit() {
         setTerminalLogs(prev => [
           ...prev.slice(0, -1),
           line,
-          `agy 🧠 >> `
+          `agy 🧠 ${terminalCwd ? `(/${terminalCwd})` : "(/)"} >> `
         ]);
 
         // Intercept log segments to extract thoughts & actions for the sidebar panel
@@ -929,7 +1024,7 @@ function WorkspaceCockpit() {
       setTerminalLogs(prev => [
         ...prev.slice(0, -1),
         `Error deploying agent: ${getErrorMessage(err)}`,
-        `agy 🧠 >> `
+        `agy 🧠 ${terminalCwd ? `(/${terminalCwd})` : "(/)"} >> `
       ]);
     }
   };
@@ -938,9 +1033,9 @@ function WorkspaceCockpit() {
   const handleRunTests = async () => {
     setTerminalLogs(prev => [
       ...prev.slice(0, -1),
-      `agy 🧠 >> antigravity test`,
+      `agy 🧠 ${terminalCwd ? `(/${terminalCwd})` : "(/)"} >> antigravity test`,
       `[system] Launching unit assertion suite (run_tests.py)...`,
-      `agy 🧠 >> `
+      `agy 🧠 ${terminalCwd ? `(/${terminalCwd})` : "(/)"} >> `
     ]);
 
     try {
@@ -950,7 +1045,8 @@ function WorkspaceCockpit() {
         body: JSON.stringify({
           problemSlug,
           command: "antigravity test",
-          sessionId
+          sessionId,
+          cwd: terminalCwd
         })
       });
       const data = await response.json() as ExecuteResponse;
@@ -968,9 +1064,9 @@ function WorkspaceCockpit() {
 
       setTerminalLogs(prev => [
         ...prev.slice(0, -4),
-        `agy 🧠 >> antigravity test`,
+        `agy 🧠 ${terminalCwd ? `(/${terminalCwd})` : "(/)"} >> antigravity test`,
         ...newLogs,
-        `agy 🧠 >> `
+        `agy 🧠 ${terminalCwd ? `(/${terminalCwd})` : "(/)"} >> `
       ]);
 
       // Re-fetch files from the workspace to load any changes
@@ -989,10 +1085,104 @@ function WorkspaceCockpit() {
     } catch (err: unknown) {
       setTerminalLogs(prev => [
         ...prev.slice(0, -4),
-        `agy 🧠 >> antigravity test`,
+        `agy 🧠 ${terminalCwd ? `(/${terminalCwd})` : "(/)"} >> antigravity test`,
         `Error running tests: ${getErrorMessage(err)}`,
-        `agy 🧠 >> `
+        `agy 🧠 ${terminalCwd ? `(/${terminalCwd})` : "(/)"} >> `
       ]);
+    }
+  };
+
+  // Run standard local shell utility command instantly
+  const handleExecuteSystemCommand = async (sysCommand: string) => {
+    if (isRunning) return;
+
+    setIsRunning(true);
+    setTerminalLogs(prev => [
+      ...prev.slice(0, -1),
+      `agy 🧠 ${terminalCwd ? `(/${terminalCwd})` : "(/)"} >> ${sysCommand}`
+    ]);
+
+    try {
+      const response = await fetch("/api/execute", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          problemSlug,
+          command: sysCommand,
+          sessionId,
+          cwd: terminalCwd
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Command failed with status ${response.status}`);
+      }
+
+      const data = await response.json() as ExecuteResponse;
+
+      // Handle CD state updates back from server
+      let nextCwd = terminalCwd;
+      if (data.newCwd !== undefined) {
+        setTerminalCwd(data.newCwd);
+        nextCwd = data.newCwd;
+      }
+
+      const rawStdout = stripAnsiCodes(data.stdout || "");
+      const rawStderr = stripAnsiCodes(data.stderr || "");
+      const outLines = rawStdout.split("\n");
+      const errLines = rawStderr.split("\n");
+      const combinedLines = [...outLines, ...errLines].filter(l => l.trim() !== "");
+
+      setTerminalLogs(prev => [
+        ...prev,
+        ...combinedLines,
+        `agy 🧠 ${nextCwd ? `(/${nextCwd})` : "(/)"} >> `
+      ]);
+
+      // Re-fetch files in case shell command modified them
+      try {
+        const res = await fetch(`/api/workspace?problemSlug=${problemSlug}`);
+        if (res.ok) {
+          const workspaceData = await res.json() as WorkspaceResponse;
+          setFiles(workspaceData.files);
+          if (activeTab && workspaceData.files[activeTab]) {
+            setCode(workspaceData.files[activeTab]);
+          }
+        }
+      } catch (e) {
+        console.error("Failed to re-sync files:", e);
+      }
+    } catch (err: unknown) {
+      setTerminalLogs(prev => [
+        ...prev,
+        `Error running command: ${getErrorMessage(err)}`,
+        `agy 🧠 ${terminalCwd ? `(/${terminalCwd})` : "(/)"} >> `
+      ]);
+    } finally {
+      setIsRunning(false);
+    }
+  };
+
+  // Handle Command History Arrow Navigation
+  const handleTerminalKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "ArrowUp") {
+      e.preventDefault();
+      if (commandHistory.length === 0) return;
+      const nextIndex = historyIndex + 1;
+      if (nextIndex < commandHistory.length) {
+        setHistoryIndex(nextIndex);
+        setTerminalInput(commandHistory[commandHistory.length - 1 - nextIndex]);
+      }
+    } else if (e.key === "ArrowDown") {
+      e.preventDefault();
+      const nextIndex = historyIndex - 1;
+      if (nextIndex >= 0) {
+        setHistoryIndex(nextIndex);
+        setTerminalInput(commandHistory[commandHistory.length - 1 - nextIndex]);
+      } else {
+        setHistoryIndex(-1);
+        setTerminalInput("");
+      }
     }
   };
 
@@ -1004,8 +1194,12 @@ function WorkspaceCockpit() {
     const cmd = terminalInput.trim();
     setTerminalInput("");
 
+    // Append to Command History
+    setCommandHistory(prev => [...prev, cmd]);
+    setHistoryIndex(-1);
+
     if (cmd === "clear") {
-      setTerminalLogs([`agy 🧠 >> `]);
+      setTerminalLogs([`agy 🧠 ${terminalCwd ? `(/${terminalCwd})` : "(/)"} >> `]);
       return;
     }
 
@@ -1013,6 +1207,7 @@ function WorkspaceCockpit() {
     const isExplicitTest = cmd === "test" || cmd === "antigravity test" || cmd === "python run_tests.py";
     const isExplicitRun = cmd === "run" || cmd === "antigravity run";
     const isExplicitStatus = cmd === "status" || cmd === "antigravity status";
+    const isExplicitCi = cmd === "ci" || cmd === "antigravity ci";
 
     if (isExplicitTest) {
       handleRunTests();
@@ -1029,6 +1224,11 @@ function WorkspaceCockpit() {
       return;
     }
 
+    if (isExplicitCi) {
+      handleExecuteSystemCommand(cmd);
+      return;
+    }
+
     // Check if command is already an agent CLI structure
     if (isAgentCliCommand(cmd)) {
       // Normalize direct shortcut aliases (prompt "..." or ask "...")
@@ -1042,7 +1242,29 @@ function WorkspaceCockpit() {
       return;
     }
 
-    // For any other non-shortcut plain-text inputs, automatically wrap them as antigravity prompt "..."
+    // Check if it is a general system/shell command
+    const tokens = cmd.split(/\s+/);
+    const firstWord = tokens[0]?.toLowerCase() || "";
+    const shellUtilities = [
+      "ls", "la", "ll", "pwd", "cat", "cd", "python", "python3", "pytest", "pip", "pip3",
+      "mkdir", "rm", "rmdir", "touch", "echo", "grep", "git", "whoami", "date", "clear",
+      "chmod", "cp", "mv", "find", "sh", "bash", "uname", "curl", "wget", "npm", "node", "npx"
+    ];
+
+    const isShellCommand = shellUtilities.includes(firstWord) || cmd.includes("|") || cmd.includes(">") || cmd.includes("&&") || cmd.includes("$");
+
+    if (isShellCommand) {
+      handleExecuteSystemCommand(cmd);
+      return;
+    }
+
+    // For any other non-shortcut plain-text inputs, automatically wrap as antigravity prompt "..."
+    setTerminalLogs(prev => [
+      ...prev.slice(0, -1),
+      `agy 🧠 ${terminalCwd ? `(/${terminalCwd})` : "(/)"} >> ${cmd}`,
+      `[system] Conversational instruction detected. Spawning Antigravity Agent...`,
+      `agy 🧠 ${terminalCwd ? `(/${terminalCwd})` : "(/)"} >> `
+    ]);
     const promptCommand = `antigravity prompt "${cmd.replace(/"/g, '\\"')}"`;
     handleDeployAgent(promptCommand);
   };
@@ -1055,7 +1277,7 @@ function WorkspaceCockpit() {
       setTerminalLogs(prev => [
         ...prev.slice(0, -1),
         `[WARNING] Cannot trigger evaluation: Rubric weights sum to ${(weightSum * 100).toFixed(0)}%, but must equal exactly 100%.`,
-        `agy 🧠 >> `
+        `agy 🧠 ${terminalCwd ? `(/${terminalCwd})` : "(/)"} >> `
       ]);
       return;
     }
@@ -1067,7 +1289,7 @@ function WorkspaceCockpit() {
     setTerminalLogs(prev => [
       ...prev.slice(0, -1),
       `[system] Submitting sandbox code files for Best-of-3 Gemini Consensus evaluation...`,
-      `agy 🧠 >> `
+      `agy 🧠 ${terminalCwd ? `(/${terminalCwd})` : "(/)"} >> `
     ]);
 
     try {
@@ -1195,17 +1417,6 @@ function WorkspaceCockpit() {
         <div className="flex items-center gap-2 sm:gap-3 overflow-x-auto max-w-full w-full md:w-auto pb-1 md:pb-0">
           <button
             type="button"
-            aria-label="Deploy agent"
-            onClick={() => handleDeployAgent()}
-            disabled={isRunning || isEvaluating}
-            className="flex items-center gap-1.5 font-mono text-[10px] px-2.5 sm:px-3.5 py-1.5 rounded-lg border border-agy-green/20 bg-agy-green/5 text-agy-green hover:bg-agy-green/10 transition-all disabled:opacity-40 cursor-pointer shrink-0"
-          >
-            <Play className="w-3 h-3 fill-agy-green" />
-            <span className="hidden sm:inline">DEPLOY AGENT</span>
-          </button>
-
-          <button
-            type="button"
             aria-label="Run tests"
             onClick={handleRunTests}
             disabled={isRunning || isEvaluating}
@@ -1223,7 +1434,7 @@ function WorkspaceCockpit() {
             className="flex items-center gap-1.5 font-mono text-[10px] px-2.5 sm:px-4 py-1.5 rounded-lg bg-agy-cyan hover:bg-agy-cyan/90 text-bg-dark font-bold shadow-[0_0_15px_rgba(0,240,255,0.25)] hover:shadow-[0_0_25px_rgba(0,240,255,0.45)] transition-all disabled:opacity-40 cursor-pointer shrink-0"
           >
             <CheckCircle2 className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">{isEvaluating ? "EVALUATING..." : "EVALUATE & FINISH"}</span>
+            <span className="hidden sm:inline">{isEvaluating ? "SUBMITTING..." : "SUBMIT"}</span>
           </button>
         </div>
       </header>
@@ -1355,7 +1566,7 @@ function WorkspaceCockpit() {
             <div className="h-8 border-b border-slate-800/80 bg-bg-panel/30 flex items-center px-4 justify-between font-mono text-[10px] text-text-muted shrink-0">
               <span className="flex items-center gap-1.5">
                 <TerminalIcon className="w-3.5 h-3.5 text-agy-cyan animate-pulse" />
-                VIRTUAL TERMINAL CLI (Isolated Environment)
+                VIRTUAL TERMINAL CLI (Isolated Environment){terminalCwd ? ` - /${terminalCwd}` : " - /"}
               </span>
               <span className="text-agy-green">ONLINE: UTC-8</span>
             </div>
@@ -1363,7 +1574,7 @@ function WorkspaceCockpit() {
             {/* Logs Area */}
             <div className="flex-1 overflow-auto p-4 font-mono text-[11px] leading-relaxed space-y-1.5 select-text">
               {terminalLogs.map((log, i) => {
-                const isUserPrompt = log.startsWith("agy 🧠 >>");
+                const isUserPrompt = log.includes("agy 🧠") && log.includes(">>");
                 const isAgentCall = log.includes("antigravity agent calling") || log.includes("[antigravity agent]");
                 const isAgentThought = log.includes("antigravity agent:");
                 const isPassed = log.includes("PASSED") || log.includes("SUCCESS");
@@ -1379,10 +1590,17 @@ function WorkspaceCockpit() {
                 return (
                   <div key={i} className={logClass}>
                     {isUserPrompt ? (
-                      <>
-                        <span className="text-agy-cyan font-semibold mr-1.5">agy 🧠 &gt;&gt;</span>
-                        <span className="text-white font-semibold">{log.replace("agy 🧠 >>", "").trim()}</span>
-                      </>
+                      (() => {
+                        const parts = log.split(">>");
+                        const promptPrefix = parts[0] + ">>";
+                        const promptText = parts.slice(1).join(">>");
+                        return (
+                          <>
+                            <span className="text-agy-cyan font-semibold mr-1.5">{promptPrefix}</span>
+                            <span className="text-white font-semibold">{promptText}</span>
+                          </>
+                        );
+                      })()
                     ) : log}
                   </div>
                 );
@@ -1392,12 +1610,13 @@ function WorkspaceCockpit() {
 
             {/* Command form field */}
             <form onSubmit={handleTerminalSubmit} className="h-10 border-t border-slate-800/80 bg-bg-panel/20 flex items-center px-4 font-mono text-xs">
-              <span className="text-agy-cyan font-semibold mr-2 shrink-0">agy 🧠 &gt;&gt;</span>
+              <span className="text-agy-cyan font-semibold mr-2 shrink-0">agy 🧠 {terminalCwd ? `(/${terminalCwd})` : "(/)"} &gt;&gt;</span>
               <input
                 type="text"
                 aria-label="Terminal command"
                 value={terminalInput}
                 onChange={(e) => setTerminalInput(e.target.value)}
+                onKeyDown={handleTerminalKeyDown}
                 disabled={isRunning || isEvaluating}
                 placeholder="Ask or prompt the agent directly..."
                 className="flex-1 bg-transparent text-white outline-none border-none caret-agy-cyan focus:ring-0"
@@ -1720,7 +1939,7 @@ function WorkspaceCockpit() {
                 {thoughtsLog.length === 0 ? (
                   <div className="h-full flex flex-col items-center justify-center text-center text-text-muted/60 uppercase">
                     <Activity className="w-6 h-6 text-slate-800 animate-pulse mb-2" />
-                    <span>No thinking traces streaming. Deploy agent above.</span>
+                    <span>No thinking traces streaming. Deploy agent via terminal.</span>
                   </div>
                 ) : (
                   thoughtsLog.map((t, i) => {

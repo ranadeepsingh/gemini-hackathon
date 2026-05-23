@@ -82,6 +82,7 @@ candidate_workspace/
 
 # Tooling and platform config
 .antigravitycli/
+.antigravity/
 .gemini/
 .vercel
 

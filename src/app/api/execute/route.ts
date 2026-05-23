@@ -7,6 +7,8 @@ import { supabase } from "@/lib/supabase/client";
 const SANDBOX_ROOT = path.resolve(process.cwd(), "candidate_workspace");
 const BIN_ROOT = path.resolve(process.cwd(), "bin");
 const HIDDEN_TESTS_ROOT = path.resolve(process.cwd(), "candidate_workspace_hidden_tests");
+const SDK_RUNNER = path.resolve(process.cwd(), "scripts/antigravity_sdk_runner.py");
+const SDK_PYTHON_BIN = process.env.ANTIGRAVITY_SDK_PYTHON || process.env.PYTHON_BIN || "python3";
 const MAX_OUTPUT_BYTES = 120_000;
 const COMMAND_TIMEOUT_MS = 120_000;
 
@@ -78,7 +80,7 @@ function normalizeCommand(tokens: string[]): string[] {
   }
 
   // Prepend antigravity if starting with direct shortcuts
-  if (["prompt", "ask", "test", "status", "run"].includes(tokens[0])) {
+  if (["prompt", "ask", "test", "status", "run", "ci"].includes(tokens[0])) {
     tokens.unshift("antigravity");
   }
 
@@ -94,6 +96,17 @@ function validateCommand(tokens: string[]) {
   }
 
   const executable = path.basename(tokens[0]);
+  if (tokens[0].startsWith("/")) {
+    throw new Error("Slash commands are not supported in this agy terminal.");
+  }
+
+  if (executable === "antigravity") {
+    const subcommand = tokens[1] || "help";
+    if (!["prompt", "ask", "run", "test", "status", "help", "ci"].includes(subcommand)) {
+      throw new Error(`Unsupported agy command: ${subcommand}`);
+    }
+  }
+
   if (["env", "printenv", "export"].includes(executable)) {
     throw new Error("Environment inspection is disabled in the interview sandbox.");
   }
@@ -105,6 +118,7 @@ function validateCommand(tokens: string[]) {
   const joined = tokens.join(" ");
   const forbiddenPatterns = [
     /(^|[\/\s])run_tests\.py($|[\s])/,
+    /(^|[\/\s])validator\.py($|[\s])/,
     /\.hidden_tests/,
     /candidate_workspace_hidden_tests/,
     /AGY_TEST_RUNNER/,
@@ -117,6 +131,57 @@ function validateCommand(tokens: string[]) {
       throw new Error("Command blocked: hidden evaluation fixtures and parent-directory traversal are not readable.");
     }
   }
+}
+
+function buildExecutableTokens(tokens: string[], sandboxDir: string, problemSlug: string): string[] {
+  const executable = path.basename(tokens[0]);
+  if (executable !== "antigravity") return tokens;
+
+  const subcommand = tokens[1] || "help";
+  if (subcommand === "prompt" || subcommand === "ask") {
+    return [
+      SDK_PYTHON_BIN,
+      SDK_RUNNER,
+      "--workspace",
+      sandboxDir,
+      "--problem",
+      problemSlug,
+      "--mode",
+      subcommand,
+      "--prompt",
+      tokens.slice(2).join(" ")
+    ];
+  }
+
+  if (subcommand === "run") {
+    const prompt = tokens.slice(2).join(" ");
+    const sdkTokens = [
+      SDK_PYTHON_BIN,
+      SDK_RUNNER,
+      "--workspace",
+      sandboxDir,
+      "--problem",
+      problemSlug,
+      "--mode",
+      "run"
+    ];
+    return prompt ? [...sdkTokens, "--prompt", prompt] : sdkTokens;
+  }
+
+  if (subcommand === "status") {
+    return [
+      SDK_PYTHON_BIN,
+      SDK_RUNNER,
+      "--workspace",
+      sandboxDir,
+      "--problem",
+      problemSlug,
+      "--mode",
+      "status"
+    ];
+  }
+
+  return tokens;
 }
 
 function buildExecutionEnv(tokens: string[], sandboxDir: string, problemSlug: string): NodeJS.ProcessEnv {
@@ -152,6 +217,7 @@ function sanitizeOutput(text: string, problemSlug: string): string {
   const hiddenDir = path.join(HIDDEN_TESTS_ROOT, problemSlug);
   return text
     .replaceAll(path.join(hiddenDir, "run_tests.py"), "[hidden-tests]/run_tests.py")
+    .replaceAll(path.join(hiddenDir, "validator.py"), "[hidden-tests]/validator.py")
     .replaceAll(hiddenDir, "[hidden-tests]")
     .replaceAll(HIDDEN_TESTS_ROOT, "[hidden-tests-root]");
 }
@@ -227,22 +293,76 @@ function runCommand(
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { problemSlug, command, sessionId } = body;
+    const { problemSlug, command, sessionId, cwd: clientCwd } = body;
 
     if (!problemSlug || !command) {
       return NextResponse.json({ error: "Missing problemSlug or command" }, { status: 400 });
     }
 
-    const sandboxDir = path.join(SANDBOX_ROOT, problemSlug);
-    if (!fs.existsSync(sandboxDir)) {
+    const baseSandboxDir = path.join(SANDBOX_ROOT, problemSlug);
+    if (!fs.existsSync(baseSandboxDir)) {
       return NextResponse.json({ error: "Sandbox directory not initialized. Load workspace first." }, { status: 400 });
     }
 
     const tokens = normalizeCommand(tokenizeCommand(command));
+
+    // Handle stateful directory traversal (cd) in-process
+    if (tokens[0] === "cd") {
+      const targetPath = tokens[1] || "";
+      let targetDir: string;
+
+      if (targetPath === "" || targetPath === "~") {
+        targetDir = baseSandboxDir;
+      } else {
+        const currentDirContext = clientCwd ? path.join(baseSandboxDir, clientCwd) : baseSandboxDir;
+        targetDir = path.resolve(currentDirContext, targetPath);
+      }
+
+      // Security Check: enforce sandbox boundaries
+      if (!targetDir.startsWith(baseSandboxDir)) {
+        return NextResponse.json({
+          stdout: "",
+          stderr: "cd: Permission denied (cannot escape sandbox bounds)",
+          code: 1,
+          success: false
+        });
+      }
+
+      // Stat Check: ensure directory exists
+      if (!fs.existsSync(targetDir) || !fs.statSync(targetDir).isDirectory()) {
+        return NextResponse.json({
+          stdout: "",
+          stderr: `cd: no such file or directory: ${targetPath || "~"}`,
+          code: 1,
+          success: false
+        });
+      }
+
+      // Compute relative CWD from base sandbox root to return to client
+      const newRelativeCwd = path.relative(baseSandboxDir, targetDir);
+      return NextResponse.json({
+        stdout: "",
+        stderr: "",
+        code: 0,
+        success: true,
+        newCwd: newRelativeCwd
+      });
+    }
+
+    // Resolve execution sandbox subdirectory safely
+    let sandboxDir = baseSandboxDir;
+    if (clientCwd) {
+      const resolvedDir = path.resolve(baseSandboxDir, clientCwd);
+      if (resolvedDir.startsWith(baseSandboxDir) && fs.existsSync(resolvedDir)) {
+        sandboxDir = resolvedDir;
+      }
+    }
+
     validateCommand(tokens);
     const execEnv = buildExecutionEnv(tokens, sandboxDir, problemSlug);
+    const executableTokens = buildExecutableTokens(tokens, sandboxDir, problemSlug);
 
-    const result = await runCommand(tokens, sandboxDir, execEnv, problemSlug);
+    const result = await runCommand(executableTokens, sandboxDir, execEnv, problemSlug);
 
     // If sessionId is present, parse metrics and update database
     if (sessionId) {

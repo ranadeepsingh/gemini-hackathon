@@ -5,7 +5,7 @@ import path from "path";
 const TEMPLATES_ROOT = path.resolve(process.cwd(), "candidate_workspace_templates");
 const SANDBOX_ROOT = path.resolve(process.cwd(), "candidate_workspace");
 const HIDDEN_TESTS_ROOT = path.resolve(process.cwd(), "candidate_workspace_hidden_tests");
-const HIDDEN_TEST_FILES = new Set(["run_tests.py"]);
+const HIDDEN_TEST_FILES = new Set(["run_tests.py", "validator.py"]);
 
 const CHALLENGE_DESCRIPTIONS: Record<string, { title: string; category: string; difficulty: string; content: string }> = {
   "agentic-matrix-optimizer": {
@@ -229,6 +229,10 @@ export async function POST(req: NextRequest) {
     // Security guard check
     if (!targetPath.startsWith(sandboxDir)) {
       return NextResponse.json({ error: "Access Denied: Path escape check failed." }, { status: 403 });
+    }
+
+    if (HIDDEN_TEST_FILES.has(path.basename(targetPath))) {
+      return NextResponse.json({ error: "Access Denied: Cannot modify hidden test or validation files." }, { status: 403 });
     }
 
     fs.mkdirSync(path.dirname(targetPath), { recursive: true });
