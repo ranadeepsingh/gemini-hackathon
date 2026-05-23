@@ -1,6 +1,8 @@
 ---
-name: k8s_triage
-description: Safely inspect CrashLoopBackOff Pod containers and isolate network states.
+name: k8s_triage_unconfigured
+description: Write the Kubernetes triage skill definition here
 ---
-# Kubernetes Sandbox Triage Skill
-Initialize this skill when troubleshooting CrashLoopBackOff cluster node disruptions.
+
+# 🌌 Kubernetes Sandbox Triage Skill Starter
+
+(Replace this content with the final skill specification markdown from the demo guide)
