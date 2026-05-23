@@ -1,0 +1,98 @@
+@import "tailwindcss";
+
+@theme {
+  --color-bg-dark: #030508;
+  --color-bg-panel: #0b0f17;
+  --color-border-subtle: #1e293b;
+  --color-agy-green: #00ff66;
+  --color-agy-cyan: #00f0ff;
+  --color-agy-violet: #8b5cf6;
+  --color-text-main: #f8fafc;
+  --color-text-muted: #94a3b8;
+  
+  --font-sans: 'Inter', 'Outfit', sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+}
+
+:root {
+  --background: #030508;
+  --foreground: #f8fafc;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  overflow-x: hidden;
+  font-family: var(--font-sans);
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #030508;
+}
+::-webkit-scrollbar-thumb {
+  background: #1e293b;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #00f0ff;
+}
+
+/* Cyberpunk terminal grid background */
+.grid-overlay {
+  background-image: 
+    linear-gradient(to right, rgba(30, 41, 59, 0.1) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(30, 41, 59, 0.1) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+/* Hologram scanline effect */
+.scanline {
+  position: relative;
+  overflow: hidden;
+}
+.scanline::after {
+  content: " ";
+  display: block;
+  position: absolute;
+  top: 0; left: 0; bottom: 0; right: 0;
+  background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.04), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.04));
+  background-size: 100% 3px, 6px 100%;
+  pointer-events: none;
+  z-index: 20;
+}
+
+/* Glassmorphism containers */
+.glass-panel {
+  background: rgba(11, 15, 23, 0.7);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+}
+
+/* Glow highlights */
+.glow-cyan {
+  box-shadow: 0 0 15px rgba(0, 240, 255, 0.2);
+}
+.glow-green {
+  box-shadow: 0 0 15px rgba(0, 255, 102, 0.2);
+}
+.glow-text-cyan {
+  text-shadow: 0 0 10px rgba(0, 240, 255, 0.5);
+}
+.glow-text-green {
+  text-shadow: 0 0 10px rgba(0, 255, 102, 0.5);
+}
+
+/* Scan line moving animation */
+@keyframes scanning {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100%); }
+}
+.moving-scan {
+  animation: scanning 8s linear infinite;
+}
