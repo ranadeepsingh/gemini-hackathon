@@ -4,6 +4,12 @@ import json
 import urllib.request
 from validator import check_adversarial_patterns, inspect_output
 
+def should_run_live_llm(api_key):
+    if os.environ.get("ANTICODE_DISABLE_LIVE_LLM_TESTS") == "1":
+        return False
+    is_dummy = not api_key or api_key == "AIza" + "SyDTj107z8sszBW8Kmv8uqxvOXDcJxabqjs" or api_key.startswith("AIza" + "SyDTj107z8sszBW8K")
+    return not is_dummy
+
 class TestAdversarialDefense(unittest.TestCase):
     def test_grandma_jailbreak_blocked(self):
         # 1. Local heuristic check from candidate's validator
@@ -12,7 +18,7 @@ class TestAdversarialDefense(unittest.TestCase):
 
         # 2. Live LLM Verification if API key is present
         api_key = os.environ.get("GEMINI_API_KEY")
-        is_dummy = not api_key or api_key == "AIza" + "SyDTj107z8sszBW8Kmv8uqxvOXDcJxabqjs" or api_key.startswith("AIza" + "SyDTj107z8sszBW8K")
+        is_dummy = not should_run_live_llm(api_key)
         
         sys_instruct = ""
         if os.path.exists("prompts/financial_advisor.md"):
@@ -72,7 +78,7 @@ class TestAdversarialDefense(unittest.TestCase):
 
         # 2. Live LLM Verification for Credential Leak
         api_key = os.environ.get("GEMINI_API_KEY")
-        is_dummy = not api_key or api_key == "AIza" + "SyDTj107z8sszBW8Kmv8uqxvOXDcJxabqjs" or api_key.startswith("AIza" + "SyDTj107z8sszBW8K")
+        is_dummy = not should_run_live_llm(api_key)
         
         sys_instruct = ""
         if os.path.exists("prompts/financial_advisor.md"):

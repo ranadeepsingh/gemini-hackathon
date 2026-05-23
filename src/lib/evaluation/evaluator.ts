@@ -2,6 +2,7 @@
 // Connects directly to Gemini Developer API with Structured JSON Outputs
 import fs from "fs";
 import path from "path";
+import { spawnSync } from "child_process";
 
 export interface EvaluatorRubric {
   metric_key: string;
@@ -23,6 +24,9 @@ export interface GradeResult {
   score_aggregate: number;
   summary_review: string;
   rubric_scores: RubricScore[];
+  test_cases_passed?: number;
+  test_cases_total?: number;
+  is_passing?: boolean;
 }
 
 interface GeminiScorePayload {
@@ -118,6 +122,82 @@ const DEFAULT_RUBRICS: EvaluatorRubric[] = [
   { metric_key: "collaboration_trace", metric_label: "Analytical Reasoning Trace", weight: 0.10, description: "Reviewing trace details, command descriptions, and communicative agility." }
 ];
 
+export interface TestResults {
+  passed: number;
+  total: number;
+  output: string;
+}
+
+export function runValidationTests(problemSlug: string): TestResults {
+  const hiddenRunnerDir = path.resolve(process.cwd(), "candidate_workspace_hidden_tests", problemSlug);
+  const hiddenRunner = path.join(hiddenRunnerDir, "run_tests.py");
+  const sandboxDir = path.resolve(process.cwd(), "candidate_workspace", problemSlug);
+
+  if (!fs.existsSync(hiddenRunner)) {
+    return { passed: 0, total: 0, output: "No hidden test runner found." };
+  }
+
+  const pythonBin = process.env.ANTIGRAVITY_SDK_PYTHON || process.env.PYTHON_BIN || "python3";
+  const systemPath = process.env.PATH || "";
+  const binRoot = path.resolve(process.cwd(), "bin");
+  const customPath = `${binRoot}${path.delimiter}${systemPath}`;
+
+  // Build the execution environment
+  const execEnv: NodeJS.ProcessEnv = {
+    ...process.env,
+    PATH: customPath,
+    HOME: sandboxDir,
+    PYTHONUNBUFFERED: "1",
+    PYTHONPATH: sandboxDir
+  };
+
+  try {
+    const res = spawnSync(pythonBin, [hiddenRunner], {
+      cwd: sandboxDir,
+      env: execEnv,
+      timeout: 15000,
+      encoding: "utf-8"
+    });
+
+    const combinedOutput = (res.stdout || "") + "\n" + (res.stderr || "");
+
+    // Parse test results using regex
+    let passed = 0;
+    let total = 0;
+
+    const ranMatch = combinedOutput.match(/Ran (\d+) tests/);
+    if (ranMatch) {
+      total = parseInt(ranMatch[1]);
+      const failMatch = combinedOutput.match(/failures=(\d+)/);
+      const errMatch = combinedOutput.match(/errors=(\d+)/);
+      const fails = failMatch ? parseInt(failMatch[1]) : 0;
+      const errs = errMatch ? parseInt(errMatch[1]) : 0;
+      passed = total - fails - errs;
+    } else {
+      // Fallback if regex match fails but process completed successfully
+      if (res.status === 0) {
+        passed = 1;
+        total = 1;
+      } else {
+        passed = 0;
+        total = 1;
+      }
+    }
+
+    return {
+      passed,
+      total,
+      output: combinedOutput
+    };
+  } catch (error) {
+    return {
+      passed: 0,
+      total: 1,
+      output: `Validation execution failed: ${error instanceof Error ? error.message : String(error)}`
+    };
+  }
+}
+
 /**
  * Triggers one grading query to the Gemini Developer API and maps the
  * structured response into the scorecard payload.
@@ -132,6 +212,8 @@ export async function runSingleEvaluation(
   const rubrics = customRubrics && customRubrics.length > 0
     ? customRubrics
     : (FALLBACK_CHALLENGE_RUBRICS[problemSlug] || DEFAULT_RUBRICS);
+
+  const testResults = runValidationTests(problemSlug);
 
   // Read the candidate's workspace transcript timeline
   const sandboxDir = path.resolve(process.cwd(), "candidate_workspace", problemSlug);
@@ -153,7 +235,7 @@ export async function runSingleEvaluation(
 
   if (!GEMINI_API_KEY) {
     console.warn("GEMINI_API_KEY is not defined. Emulating high-fidelity evaluator report.");
-    return generateFallbackMockGrade(problemSlug, rubrics);
+    return generateFallbackMockGrade(problemSlug, rubrics, testResults.passed, testResults.total);
   }
 
   try {
@@ -174,6 +256,11 @@ ${JSON.stringify(executionLogs, null, 2)}
 
 [CHRONOLOGICAL TRANSCRIPT TIMELINE]:
 ${formattedTimeline}
+
+[VALIDATION SUITE OUTPUT]:
+${testResults.output}
+
+[TEST CASES PASSED]: ${testResults.passed} / ${testResults.total}
 
 Provide scores from 0 to 100 along with brief specific constructive feedback for each of the following evaluation rubrics:
 ${rubrics.map(r => `- ${r.metric_key} (${r.metric_label}): ${r.description} (Weight: ${r.weight})`).join("\n")}
@@ -277,19 +364,22 @@ Add a detailed summary_review (approx 3 sentences) in a professional, constructi
       score_prompt_engineering: rubricScores[2]?.score || score_aggregate,
       score_aggregate,
       summary_review: gradeRun.summary_review,
-      rubric_scores: rubricScores
+      rubric_scores: rubricScores,
+      test_cases_passed: testResults.passed,
+      test_cases_total: testResults.total,
+      is_passing: testResults.passed === testResults.total
     };
   } catch (err) {
     const errMsg = err instanceof Error ? err.message : String(err);
     console.error("Gemini evaluation crashed, generating fallback report:", errMsg);
-    return generateFallbackMockGrade(problemSlug, rubrics);
+    return generateFallbackMockGrade(problemSlug, rubrics, testResults.passed, testResults.total);
   }
 }
 
 /**
  * Returns extremely realistic mock evaluations for fallback/demo resilience.
  */
-function generateFallbackMockGrade(slug: string, rubrics: EvaluatorRubric[]): GradeResult {
+function generateFallbackMockGrade(slug: string, rubrics: EvaluatorRubric[], testPassed?: number, testTotal?: number): GradeResult {
   const rubricScores: RubricScore[] = [];
   let scoreSum = 0;
 
@@ -317,6 +407,9 @@ function generateFallbackMockGrade(slug: string, rubrics: EvaluatorRubric[]): Gr
     score_prompt_engineering: rubricScores[2]?.score || score_aggregate,
     score_aggregate,
     summary_review,
-    rubric_scores: rubricScores
+    rubric_scores: rubricScores,
+    test_cases_passed: testPassed,
+    test_cases_total: testTotal,
+    is_passing: testPassed !== undefined && testTotal !== undefined ? testPassed === testTotal : (score_aggregate >= 70)
   };
 }

@@ -215,6 +215,15 @@ function buildExecutionEnv(tokens: string[], sandboxDir: string, problemSlug: st
   return execEnv;
 }
 
+function syncHiddenTestRunner(problemSlug: string) {
+  const templateRunner = path.join(TEMPLATES_ROOT, problemSlug, "run_tests.py");
+  if (!fs.existsSync(templateRunner)) return;
+
+  const hiddenDir = path.join(HIDDEN_TESTS_ROOT, problemSlug);
+  fs.mkdirSync(hiddenDir, { recursive: true });
+  fs.copyFileSync(templateRunner, path.join(hiddenDir, "run_tests.py"));
+}
+
 function sanitizeOutput(text: string, problemSlug: string): string {
   const hiddenDir = path.join(HIDDEN_TESTS_ROOT, problemSlug);
   return text
@@ -308,6 +317,9 @@ export async function POST(req: NextRequest) {
 
     refreshOutdatedStarterFiles(problemSlug, path.join(TEMPLATES_ROOT, problemSlug), baseSandboxDir);
     const tokens = normalizeCommand(tokenizeCommand(command));
+    if (tokens[0] === "antigravity" && (tokens[1] || "") === "test") {
+      syncHiddenTestRunner(problemSlug);
+    }
 
     // Handle stateful directory traversal (cd) in-process
     if (tokens[0] === "cd") {

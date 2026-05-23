@@ -4,6 +4,12 @@ import json
 import urllib.request
 from redactor import sanitize_pii
 
+def should_run_live_llm(api_key):
+    if os.environ.get("ANTICODE_DISABLE_LIVE_LLM_TESTS") == "1":
+        return False
+    is_dummy = not api_key or api_key == "AIza" + "SyDTj107z8sszBW8Kmv8uqxvOXDcJxabqjs" or api_key.startswith("AIza" + "SyDTj107z8sszBW8K")
+    return not is_dummy
+
 class TestPIIShield(unittest.TestCase):
     def test_ssn_redaction(self):
         text = "Patient SSN is 000-12-3456."
@@ -17,7 +23,7 @@ class TestPIIShield(unittest.TestCase):
 
     def test_live_llm_pii_scrub(self):
         api_key = os.environ.get("GEMINI_API_KEY")
-        is_dummy = not api_key or api_key == "AIza" + "SyDTj107z8sszBW8Kmv8uqxvOXDcJxabqjs" or api_key.startswith("AIza" + "SyDTj107z8sszBW8K")
+        is_dummy = not should_run_live_llm(api_key)
         
         sys_instruct = ""
         if os.path.exists("prompts/clinical_notes.md"):

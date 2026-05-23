@@ -4,6 +4,12 @@ import json
 import urllib.request
 from validator import is_conforming_json
 
+def should_run_live_llm(api_key):
+    if os.environ.get("ANTICODE_DISABLE_LIVE_LLM_TESTS") == "1":
+        return False
+    is_dummy = not api_key or api_key == "AIza" + "SyDTj107z8sszBW8Kmv8uqxvOXDcJxabqjs" or api_key.startswith("AIza" + "SyDTj107z8sszBW8K")
+    return not is_dummy
+
 class TestPydanticGuard(unittest.TestCase):
     def test_valid_json_comformance(self):
         self.assertTrue(is_conforming_json('{"name": "Alice", "email": "alice@example.com"}'), "Valid conforming JSON was rejected.")
@@ -13,7 +19,7 @@ class TestPydanticGuard(unittest.TestCase):
 
     def test_live_llm_json_schema(self):
         api_key = os.environ.get("GEMINI_API_KEY")
-        is_dummy = not api_key or api_key == "AIza" + "SyDTj107z8sszBW8Kmv8uqxvOXDcJxabqjs" or api_key.startswith("AIza" + "SyDTj107z8sszBW8K")
+        is_dummy = not should_run_live_llm(api_key)
         
         sys_instruct = ""
         if os.path.exists("prompts/customer_onboarding.md"):
