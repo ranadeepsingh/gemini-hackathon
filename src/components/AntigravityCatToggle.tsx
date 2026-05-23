@@ -18,7 +18,9 @@ interface CatRoute {
 }
 
 const CAT_ROUTE_PAUSE_MS = 2800;
-const CAT_ROUTE_TIMES = [0, 0.33, 0.39, 0.55, 0.61, 0.82, 1];
+const CAT_ROUTE_TIMES = [0, 0.015, 0.33, 0.39, 0.55, 0.61, 0.82, 1];
+const CAT_FALL_DISTANCE = 220;
+const CAT_FALL_DURATION = 1.05;
 
 function randomBetween(min: number, max: number) {
   return min + Math.random() * (max - min);
@@ -41,6 +43,7 @@ function createCatRoute(): CatRoute {
     left: startsFromLeft
       ? [
           "-92px",
+          "12px",
           `${firstTurn}%`,
           `${firstTurn}%`,
           `${recoilTurn}%`,
@@ -50,6 +53,7 @@ function createCatRoute(): CatRoute {
         ]
       : [
           "calc(100% + 16px)",
+          "calc(100% - 88px)",
           `${firstTurn}%`,
           `${firstTurn}%`,
           `${recoilTurn}%`,
@@ -58,9 +62,18 @@ function createCatRoute(): CatRoute {
           "-92px",
         ],
     scaleX: startsFromLeft
-      ? [1, 1, -1, -1, 1, 1, 1]
-      : [-1, -1, 1, 1, -1, -1, -1],
-    y: [0, randomBetween(-2, 1), 0, randomBetween(-1, 2), 0, randomBetween(-2, 1), 0],
+      ? [1, 1, 1, -1, -1, 1, 1, 1]
+      : [-1, -1, -1, 1, 1, -1, -1, -1],
+    y: [
+      0,
+      randomBetween(-1, 1),
+      randomBetween(-2, 1),
+      0,
+      randomBetween(-1, 2),
+      0,
+      randomBetween(-2, 1),
+      0,
+    ],
     times: CAT_ROUTE_TIMES,
   };
 }
@@ -83,10 +96,12 @@ function CatGraphic() {
 export default function AntigravityCatToggle({ className = "" }: AntigravityCatToggleProps) {
   const [catEnabled, setCatEnabled] = useState(false);
   const [catRoute, setCatRoute] = useState<CatRoute | null>(null);
+  const [catFalling, setCatFalling] = useState(false);
   const shouldReduceMotion = useReducedMotion();
+  const showCatLayer = catEnabled || catFalling;
 
   useEffect(() => {
-    if (!catEnabled || shouldReduceMotion) {
+    if (!catEnabled || catFalling || shouldReduceMotion) {
       return;
     }
 
@@ -95,7 +110,59 @@ export default function AntigravityCatToggle({ className = "" }: AntigravityCatT
     }, catRoute ? catRoute.duration * 1000 + CAT_ROUTE_PAUSE_MS : 0);
 
     return () => window.clearTimeout(routeTimer);
-  }, [catEnabled, catRoute, shouldReduceMotion]);
+  }, [catEnabled, catFalling, catRoute, shouldReduceMotion]);
+
+  const handleToggleClick = () => {
+    if (catEnabled) {
+      setCatEnabled(false);
+      setCatFalling(false);
+      setCatRoute(null);
+      return;
+    }
+
+    setCatRoute(null);
+    setCatFalling(false);
+    setCatEnabled(true);
+  };
+
+  const handleCatClick = () => {
+    setCatEnabled(false);
+
+    if (shouldReduceMotion || !catRoute) {
+      setCatFalling(false);
+      setCatRoute(null);
+      return;
+    }
+
+    setCatFalling(true);
+  };
+
+  const handleCatFallComplete = () => {
+    if (!catFalling) {
+      return;
+    }
+
+    setCatFalling(false);
+    setCatRoute(null);
+  };
+
+  const catGraphic = (
+    <motion.div
+      animate={
+        catFalling
+          ? { y: CAT_FALL_DISTANCE, rotate: 18, opacity: 0 }
+          : { y: 0, rotate: 0, opacity: 1 }
+      }
+      transition={
+        catFalling
+          ? { duration: CAT_FALL_DURATION, ease: "easeIn" }
+          : { duration: 0.2, ease: "easeOut" }
+      }
+      onAnimationComplete={handleCatFallComplete}
+    >
+      <CatGraphic />
+    </motion.div>
+  );
 
   return (
     <>
@@ -103,7 +170,7 @@ export default function AntigravityCatToggle({ className = "" }: AntigravityCatT
         type="button"
         aria-pressed={catEnabled}
         aria-label={catEnabled ? "Disable antigravity cat" : "Enable antigravity cat"}
-        onClick={() => setCatEnabled((enabled) => !enabled)}
+        onClick={handleToggleClick}
         className={`relative z-20 flex items-center gap-2 rounded-full px-1.5 py-1 font-mono text-[10px] font-bold uppercase tracking-wider transition-all duration-300 cursor-pointer ${
           catEnabled
             ? "text-agy-green"
@@ -128,23 +195,27 @@ export default function AntigravityCatToggle({ className = "" }: AntigravityCatT
       </button>
 
       <AnimatePresence>
-        {catEnabled && (
+        {showCatLayer && (
           <motion.div
             aria-hidden="true"
-            className="anti-gravity-cat-layer pointer-events-none absolute inset-0 overflow-hidden"
+            className="anti-gravity-cat-layer pointer-events-none absolute inset-0 overflow-visible"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
           >
             {shouldReduceMotion || !catRoute ? (
-              <div className="anti-gravity-cat-track">
-                <CatGraphic />
+              <div
+                className="anti-gravity-cat-track pointer-events-auto cursor-pointer"
+                onClick={handleCatClick}
+              >
+                {catGraphic}
               </div>
             ) : (
               <motion.div
                 key={catRoute.id}
-                className="anti-gravity-cat-track"
+                className="anti-gravity-cat-track pointer-events-auto cursor-pointer"
+                onClick={handleCatClick}
                 initial={{
                   left: catRoute.left[0],
                   scaleX: catRoute.scaleX[0],
@@ -162,7 +233,7 @@ export default function AntigravityCatToggle({ className = "" }: AntigravityCatT
                 }}
                 style={{ top: catRoute.top }}
               >
-                <CatGraphic />
+                {catGraphic}
               </motion.div>
             )}
           </motion.div>
