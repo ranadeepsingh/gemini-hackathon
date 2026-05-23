@@ -425,7 +425,7 @@ export default function LoginPage() {
               className="group py-2.5 px-3 rounded-xl border border-slate-800 hover:border-agy-cyan/40 bg-bg-dark/40 hover:bg-agy-cyan/5 transition-all duration-300 font-mono text-xs text-text-muted hover:text-agy-cyan flex flex-col items-center gap-1.5 cursor-pointer"
             >
               <Zap className="w-4 h-4 text-text-muted group-hover:text-agy-cyan" />
-              <span>CANDIDATE VIEW</span>
+              <span>USER VIEW</span>
             </button>
             <button
               onClick={() => handleQuickDemoBypass("interviewer")}

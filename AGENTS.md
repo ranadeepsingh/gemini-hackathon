@@ -43,7 +43,7 @@ To assist your development on each specialized layer of this codebase, consult o
 
 5.  ### 🗄️ [Supabase & Database updates](file:///Users/rana-ms-work/Documents/gemini-hackathon/skills/supabase-db/SKILL.md)
     *   **Scope**: PostgreSQL tables (profiles, problems, sessions, telemetry, scorecards), RLS access policies, triggers, and real-time streaming publications.
-    *   **Guideline**: Write safe, idempotent migrations inside `supabase/schema.sql` and always keep RLS enabled for private user tables.
+    *   **Guideline**: Write safe, idempotent migrations inside `supabase/schema.sql`, keep RLS enabled for private user tables, and always keep [DB_SCHEMA.md](file:///Users/rana-ms-work/Documents/gemini-hackathon/DB_SCHEMA.md) synchronized with any schema, constraint, or trigger updates.
 
 6.  ### 🔒 [Secure Git & Credentials Workflows](file:///Users/rana-ms-work/Documents/gemini-hackathon/skills/github-workflows/SKILL.md)
     *   **Scope**: Credential leak prevention, Git pre-commit scanner hooks, and secure workspace configurations.

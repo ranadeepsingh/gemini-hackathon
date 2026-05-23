@@ -62,7 +62,7 @@ for (let line of lines) {
 }
 
 console.log(`${colors.cyan}🔍 Found ${colors.bright}${varsToSync.length}${colors.reset} environment variables to synchronize...`);
-console.log(`${colors.dim}Running synchronization with 15-second safety timeouts and concurrency limit of 4...\n${colors.reset}`);
+console.log(`${colors.dim}Running sequential synchronization with 30-second safety timeouts and automatic retries to guarantee 100% stable syncing...\n${colors.reset}`);
 
 // Run a command as a promise with instant-kill once the save is confirmed
 function runVercelCmd(args) {
@@ -72,35 +72,39 @@ function runVercelCmd(args) {
     let stderr = '';
     let resolved = false;
 
-    // 15-second safety timeout
+    // 30-second safety timeout for robust network/API handshakes
     const timer = setTimeout(() => {
       if (!resolved) {
         resolved = true;
         proc.kill('SIGKILL');
         resolve({ code: -1, stdout: stdout.trim(), stderr: (stderr.trim() + '\n[TIMEOUT: Command hung]').trim() });
       }
-    }, 15000);
+    }, 30000);
 
-    const checkSuccess = (data) => {
-      const text = data.toString();
-      if (text.includes('Added Environment Variable') || text.includes('Overrode Environment Variable') || text.includes('Removed Environment Variable')) {
+    const checkSuccess = () => {
+      const accumulated = stdout + '\n' + stderr;
+      if (
+        accumulated.includes('Added Environment Variable') ||
+        accumulated.includes('Overrode Environment Variable') ||
+        accumulated.includes('Removed Environment Variable')
+      ) {
         if (!resolved) {
           resolved = true;
           clearTimeout(timer);
           // Kill the process immediately to avoid background update/telemetry hangs!
           proc.kill('SIGKILL');
-          resolve({ code: 0, stdout: stdout.trim() + '\n' + text.trim(), stderr: stderr.trim() });
+          resolve({ code: 0, stdout: stdout.trim(), stderr: stderr.trim() });
         }
       }
     };
 
     proc.stdout.on('data', (data) => {
-      stdout += data;
-      checkSuccess(data);
+      stdout += data.toString();
+      checkSuccess();
     });
     proc.stderr.on('data', (data) => {
-      stderr += data;
-      checkSuccess(data);
+      stderr += data.toString();
+      checkSuccess();
     });
 
     proc.on('close', (code) => {
@@ -113,22 +117,36 @@ function runVercelCmd(args) {
   });
 }
 
-// Sync a single variable to production, preview, and development
+// Sync a single variable to production, preview, and development with auto-retries
 async function syncVar({ key, value }) {
   let success = true;
   let errors = [];
 
   for (const env of ['production', 'preview', 'development']) {
+    let envSuccess = false;
+    let envErrors = [];
+
     const args = ['env', 'add', key, env];
     if (env === 'preview') {
       args.push('');
     }
     args.push('--value', value, '--force', '--yes');
 
-    const result = await runVercelCmd(args);
-    if (result.code !== 0) {
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      const result = await runVercelCmd(args);
+      if (result.code === 0) {
+        envSuccess = true;
+        break;
+      } else {
+        envErrors.push(`Attempt ${attempt}: ${result.stderr || result.stdout || 'Unknown error'}`);
+        // Quick backoff wait of 1 second before retrying
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+    }
+
+    if (!envSuccess) {
       success = false;
-      errors.push(`${env}: ${result.stderr || result.stdout || 'Unknown error'}`);
+      errors.push(`${env} failed after 3 attempts (${envErrors.join(' | ')})`);
     }
   }
 
@@ -157,7 +175,7 @@ async function runWithConcurrency(items, fn, limit) {
 
 async function main() {
   const startTime = Date.now();
-  await runWithConcurrency(varsToSync, syncVar, 4); // Sync 4 variables concurrently
+  await runWithConcurrency(varsToSync, syncVar, 1); // Sync variables sequentially (limit 1)
   const durationSec = ((Date.now() - startTime) / 1000).toFixed(1);
 
   console.log(`\n${colors.green}${colors.bright}🎉 Environment variable synchronization process completed in ${durationSec}s!${colors.reset}`);

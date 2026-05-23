@@ -13,6 +13,10 @@
 # Testing
 /coverage
 
+# Generated Python runtime artifacts
+__pycache__/
+*.py[cod]
+
 # Next.js build outputs and caches
 /.next/
 /out/
@@ -73,7 +77,13 @@ id_rsa*
 supabase/.temp/
 supabase/migrations/.temp/
 
+# Runtime candidate sandboxes are regenerated from candidate_workspace_templates/
+candidate_workspace/
+
 # Tooling and platform config
 .antigravitycli/
 .gemini/
 .vercel
+
+# Generated interview workspaces
+candidate_workspace_hidden_tests/
