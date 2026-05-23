@@ -4,6 +4,14 @@ import fs from "fs";
 import path from "path";
 import { spawnSync } from "child_process";
 
+const IS_VERCEL = !!process.env.VERCEL;
+const SANDBOX_ROOT = IS_VERCEL
+  ? path.join("/tmp", "candidate_workspace")
+  : path.resolve(process.cwd(), "candidate_workspace");
+const HIDDEN_TESTS_ROOT = IS_VERCEL
+  ? path.join("/tmp", "candidate_workspace_hidden_tests")
+  : path.resolve(process.cwd(), "candidate_workspace_hidden_tests");
+
 export interface EvaluatorRubric {
   metric_key: string;
   metric_label: string;
@@ -135,9 +143,9 @@ export interface TestResults {
 }
 
 export function runValidationTests(problemSlug: string): TestResults {
-  const hiddenRunnerDir = path.resolve(process.cwd(), "candidate_workspace_hidden_tests", problemSlug);
+  const hiddenRunnerDir = path.join(HIDDEN_TESTS_ROOT, problemSlug);
   const hiddenRunner = path.join(hiddenRunnerDir, "run_tests.py");
-  const sandboxDir = path.resolve(process.cwd(), "candidate_workspace", problemSlug);
+  const sandboxDir = path.join(SANDBOX_ROOT, problemSlug);
 
   if (!fs.existsSync(hiddenRunner)) {
     return { passed: 0, total: 0, output: "No hidden test runner found." };
@@ -222,7 +230,7 @@ export async function runSingleEvaluation(
   const testResults = runValidationTests(problemSlug);
 
   // Read the candidate's workspace transcript timeline
-  const sandboxDir = path.resolve(process.cwd(), "candidate_workspace", problemSlug);
+  const sandboxDir = path.join(SANDBOX_ROOT, problemSlug);
   const transcriptPath = path.join(sandboxDir, ".antigravity", "transcript.jsonl");
   let formattedTimeline = "No interactive timeline events recorded.";
   if (fs.existsSync(transcriptPath)) {
@@ -443,7 +451,7 @@ function generateFallbackMockGrade(slug: string, rubrics: EvaluatorRubric[], tes
   const passed = testPassed !== undefined ? testPassed : 0;
   const passedRatio = total > 0 ? passed / total : 0;
 
-  const sandboxDir = path.resolve(process.cwd(), "candidate_workspace", slug);
+  const sandboxDir = path.join(SANDBOX_ROOT, slug);
 
   // 1. Compute prompt size for prompt challenges
   let promptLength = 0;

@@ -5,8 +5,13 @@ import { refreshOutdatedStarterFiles } from "@/lib/workspace/starter-repairs";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 
 const TEMPLATES_ROOT = path.resolve(process.cwd(), "candidate_workspace_templates");
-const SANDBOX_ROOT = path.resolve(process.cwd(), "candidate_workspace");
-const HIDDEN_TESTS_ROOT = path.resolve(process.cwd(), "candidate_workspace_hidden_tests");
+const IS_VERCEL = !!process.env.VERCEL;
+const SANDBOX_ROOT = IS_VERCEL
+  ? path.join("/tmp", "candidate_workspace")
+  : path.resolve(process.cwd(), "candidate_workspace");
+const HIDDEN_TESTS_ROOT = IS_VERCEL
+  ? path.join("/tmp", "candidate_workspace_hidden_tests")
+  : path.resolve(process.cwd(), "candidate_workspace_hidden_tests");
 const HIDDEN_TEST_FILES = new Set(["run_tests.py"]);
 
 const CHALLENGE_DESCRIPTIONS: Record<string, { title: string; category: string; difficulty: string; content: string }> = {

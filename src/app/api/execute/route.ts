@@ -5,10 +5,15 @@ import fs from "fs";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { refreshOutdatedStarterFiles } from "@/lib/workspace/starter-repairs";
 
-const SANDBOX_ROOT = path.join(/*turbopackIgnore: true*/ process.cwd(), "candidate_workspace");
+const IS_VERCEL = !!process.env.VERCEL;
+const SANDBOX_ROOT = IS_VERCEL
+  ? path.join("/tmp", "candidate_workspace")
+  : path.join(/*turbopackIgnore: true*/ process.cwd(), "candidate_workspace");
 const TEMPLATES_ROOT = path.join(/*turbopackIgnore: true*/ process.cwd(), "candidate_workspace_templates");
 const BIN_ROOT = path.join(/*turbopackIgnore: true*/ process.cwd(), "bin");
-const HIDDEN_TESTS_ROOT = path.join(/*turbopackIgnore: true*/ process.cwd(), "candidate_workspace_hidden_tests");
+const HIDDEN_TESTS_ROOT = IS_VERCEL
+  ? path.join("/tmp", "candidate_workspace_hidden_tests")
+  : path.join(/*turbopackIgnore: true*/ process.cwd(), "candidate_workspace_hidden_tests");
 const SDK_RUNNER = path.join(/*turbopackIgnore: true*/ process.cwd(), "scripts/antigravity_sdk_runner.py");
 const SDK_PYTHON_BIN = process.env.ANTIGRAVITY_SDK_PYTHON || process.env.PYTHON_BIN || "python3";
 const MAX_OUTPUT_BYTES = 120_000;
