@@ -790,15 +790,14 @@ export default function Home() {
               {/* Antigravity SDK */}
               <div className="flex flex-col items-center gap-3 group">
                 <div className="relative w-20 h-20 rounded-xl overflow-hidden border border-border-subtle bg-bg-panel/40 p-1.5 backdrop-blur-md group-hover:border-agy-cyan/60 transition-all shadow-[0_0_15px_rgba(0,240,255,0.1)] group-hover:shadow-[0_0_25px_rgba(0,240,255,0.25)] flex items-center justify-center">
-                  <div className="relative w-full h-full bg-bg-dark/60 rounded-lg flex items-center justify-center p-2.5 border border-border-subtle/30 overflow-hidden">
-                    {/* Centered holographic cat face with orbital gravity rings */}
-                    <svg viewBox="0 0 100 100" className="w-10 h-10 transition-transform group-hover:scale-105" xmlns="http://www.w3.org/2000/svg">
-                      <ellipse cx="50" cy="50" rx="45" ry="12" fill="none" stroke="#00f0ff" strokeWidth="2.5" strokeDasharray="6 4" className="animate-spin" style={{ transformOrigin: "50% 50%", animationDuration: "12s" }} />
-                      <ellipse cx="50" cy="50" rx="12" ry="40" fill="none" stroke="#8b5cf6" strokeWidth="1.5" strokeDasharray="4 4" className="animate-spin" style={{ transformOrigin: "50% 50%", animationDuration: "8s" }} />
-                      <path d="M35 38 L25 22 L32 32 L44 32 L50 35 L56 32 L68 32 L75 22 L65 38 L65 48 C65 58 58 64 50 64 C42 64 35 58 35 48 Z" fill="none" stroke="#00f0ff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="drop-shadow-[0_0_6px_#00f0ff]" />
-                      <path d="M42 46h.01 M58 46h.01" stroke="#00f0ff" strokeWidth="4" strokeLinecap="round" />
-                      <path d="M46 53 Q50 56 54 53" fill="none" stroke="#00f0ff" strokeWidth="2.5" strokeLinecap="round" />
-                    </svg>
+                  <div className="relative w-full h-full bg-bg-dark/60 rounded-lg flex items-center justify-center p-2 border border-border-subtle/30 overflow-hidden">
+                    <Image
+                      src="/assets/antigravity_logo.png"
+                      alt="Antigravity SDK Logo"
+                      width={48}
+                      height={48}
+                      className="object-contain transition-transform duration-300 group-hover:scale-110 filter drop-shadow-[0_0_8px_rgba(0,240,255,0.4)]"
+                    />
                   </div>
                 </div>
                 <span className="font-mono text-[10px] text-text-muted uppercase tracking-wider group-hover:text-text-main transition-colors">
@@ -809,16 +808,14 @@ export default function Home() {
               {/* Google Cloud Platform */}
               <div className="flex flex-col items-center gap-3 group">
                 <div className="relative w-20 h-20 rounded-xl overflow-hidden border border-border-subtle bg-bg-panel/40 p-1.5 backdrop-blur-md group-hover:border-agy-cyan/60 transition-all shadow-[0_0_15px_rgba(0,240,255,0.1)] group-hover:shadow-[0_0_25px_rgba(0,240,255,0.25)] flex items-center justify-center">
-                  <div className="relative w-full h-full bg-bg-dark/60 rounded-lg flex items-center justify-center p-3 border border-border-subtle/30">
-                    {/* Geometrically accurate glowing Google Cloud isometric hexagon */}
-                    <svg viewBox="0 0 24 24" className="w-8 h-8 transition-transform group-hover:scale-105 drop-shadow-[0_0_8px_rgba(66,133,244,0.4)]" xmlns="http://www.w3.org/2000/svg">
-                      {/* Left Blue Segment */}
-                      <path d="M12 11.24V22l-8.62-5V6.24L12 11.24z" fill="#4285F4" />
-                      {/* Right Green Segment */}
-                      <path d="M12 11.24l8.62-5V17l-8.62 5V11.24z" fill="#34A853" />
-                      {/* Top Red Segment */}
-                      <path d="M12 11.24L3.38 6.24l8.62-5 8.62 5-8.62 5z" fill="#EA4335" />
-                    </svg>
+                  <div className="relative w-full h-full bg-bg-dark/60 rounded-lg flex items-center justify-center p-3 border border-border-subtle/30 overflow-hidden">
+                    <Image
+                      src="/assets/gcp_logo.png"
+                      alt="Google Cloud Platform Logo"
+                      width={48}
+                      height={48}
+                      className="object-contain transition-transform duration-300 group-hover:scale-110 filter drop-shadow-[0_0_8px_rgba(66,133,244,0.4)]"
+                    />
                   </div>
                 </div>
                 <span className="font-mono text-[10px] text-text-muted uppercase tracking-wider group-hover:text-text-main transition-colors">
