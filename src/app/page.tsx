@@ -403,7 +403,7 @@ export default function Home() {
                     <div className="w-12 h-12 rounded-lg bg-agy-violet/10 flex items-center justify-center border border-agy-violet/30 text-agy-violet">
                       <ShieldAlert className="w-6 h-6" />
                     </div>
-                    <h3 className="text-xl font-bold font-mono">AI Prompt Engineering Interview</h3>
+                    <h3 className="text-xl font-bold font-mono">Prompt Engineering Interview</h3>
                     <p className="text-text-muted leading-relaxed">
                       Present prompt packages to adversarial mock inputs. Evaluate output compliance against strict JSON schema asserts, defense rating matrices, formatting compliance, and resistance to jailbreak overrides.
                     </p>

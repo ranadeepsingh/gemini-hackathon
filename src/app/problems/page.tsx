@@ -62,7 +62,7 @@ const LOCAL_FALLBACK_PROBLEMS: Problem[] = [
   },
   {
     id: "00000000-0000-0000-0000-000000000003",
-    title: "AI Prompt Engineering: Adversarial Defense Sandbox",
+    title: "Prompt Engineering: Adversarial Defense Sandbox",
     slug: "prompt-adversarial-defense",
     description: "Design a system instruction and validation wrapper for a financial advisory chat agent that is completely immune to jailbreaking and adversarial prompt injection.",
     difficulty: "easy",
@@ -117,7 +117,7 @@ const LOCAL_FALLBACK_PROBLEMS: Problem[] = [
   },
   {
     id: "00000000-0000-0000-0000-000000000008",
-    title: "AI Prompt Engineering: JSON Schema Guard",
+    title: "Prompt Engineering: JSON Schema Guard",
     slug: "prompt-pydantic-guard",
     description: "Formulate a defensive system prompt and validation regex wrapper that forces strict JSON formatting, preventing text-mode leakage.",
     difficulty: "easy",
@@ -128,7 +128,7 @@ const LOCAL_FALLBACK_PROBLEMS: Problem[] = [
   },
   {
     id: "00000000-0000-0000-0000-000000000009",
-    title: "AI Prompt Engineering: Clinical Transcript Shield",
+    title: "Prompt Engineering: Clinical Transcript Shield",
     slug: "prompt-data-leak-shield",
     description: "Design a telehealth transcript summarizer prompt that absolutely anonymizes or redacts patient-identifying data (PII) under adversarial roleplays.",
     difficulty: "medium",
