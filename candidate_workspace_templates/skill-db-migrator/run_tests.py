@@ -33,7 +33,8 @@ class TestDBMigratorSkill(unittest.TestCase):
             content = f.read()
         self.assertIn("name:", content, "Frontmatter must define a name.")
         self.assertIn("description:", content, "Frontmatter must define a description.")
-        self.assertIn("schema_migrator", content, "Frontmatter name must include schema_migrator.")
+        self.assertNotIn("schema_migrator_unconfigured", content, "SKILL.md frontmatter must be updated from the starter stub.")
+        self.assertNotIn("Database Schema Migrator Skill Starter", content, "SKILL.md content must be updated from the starter stub.")
 
 if __name__ == "__main__":
     unittest.main()
