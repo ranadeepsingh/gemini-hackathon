@@ -812,11 +812,10 @@ function WorkspaceCockpit() {
     let active = true;
     async function loadWorkspace() {
       try {
-        setTerminalLogs([
-          `AntiCode Virtual Sandbox Environment initializing...`,
-          `Establishing connection to GCE VM node: us-central-4a...`,
-          `agy 🧠 (/) >> `
-        ]);
+        setTerminalLogs(replaceTerminalLogs([
+          "AntiCode sandbox initializing...",
+          "Loading candidate workspace files..."
+        ], ""));
 
         const res = await fetch(`/api/workspace?problemSlug=${problemSlug}`);
         if (!res.ok) throw new Error("Workspace initialization failed");
@@ -824,39 +823,17 @@ function WorkspaceCockpit() {
 
         if (!active) return;
 
-        setFiles(data.files);
-        setActiveFile(data.activeFile);
-        setCode(data.files[data.activeFile] || "");
-
-        const bannerLines = [
-          `                                        `,
-          `   █████╗ ███╗   ██╗████████╗██╗ ██████╗ ██████╗ ██████╗ ███████╗`,
-          `  ██╔══██╗████╗  ██║╚══██╔══╝██║██╔════╝██╔═══██╗██╔══██╗██╔════╝`,
-          `  ███████║██╔██╗ ██║   ██║   ██║██║     ██║   ██║██║  ██║█████╗  `,
-          `  ██╔══██║██║╚██╗██║   ██║   ██║██║     ██║   ██║██║  ██║██╔══╝  `,
-          `  ██║  ██║██║ ╚████║   ██║   ██║╚██████╗╚██████╔╝██████╔╝███████╗`,
-          `  ╚═╝  ╚═╝╚═╝  ╚═══╝   ╚═╝   ╚═╝ ╚═════╝ ╚═════╝ ╚═════╝ ╚══════╝`,
-          `                                                                 `,
-          `🌌 Antigravity Autonomous Terminal CLI v2.0 - Active & Ready`,
-          `-----------------------------------------------------------------`,
-          `⚡ Shortcode Aliases Pre-Activated:`,
-          `  • prompt "instruction" ➔ antigravity prompt "..."`,
-          `  • ask "instruction"    ➔ antigravity ask "..."`,
-          `  • run                  ➔ antigravity run`,
-          `  • test                 ➔ antigravity test`,
-          `  • status               ➔ antigravity status`,
-          `  • clear                ➔ clear terminal history`,
-          `-----------------------------------------------------------------`,
-          `agy 🧠 (/) >> `
-        ];
-        setTerminalLogs(bannerLines);
+        reconcileWorkspaceFiles(data);
+        setTerminalLogs(replaceTerminalLogs([
+          "Official Antigravity SDK terminal ready.",
+          "Commands: status, run, prompt \"...\", ask \"...\", test, clear."
+        ], ""));
       } catch (err: unknown) {
         console.error(err);
         if (active) {
-          setTerminalLogs([
+          setTerminalLogs(replaceTerminalLogs([
             `Error initializing workspace sandbox: ${getErrorMessage(err)}`,
-            `agy 🧠 >> `
-          ]);
+          ], ""));
         }
       }
     }
@@ -903,7 +880,13 @@ function WorkspaceCockpit() {
 
   // Terminal Auto-scrolling
   useEffect(() => {
-    terminalEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (!shouldStickToTerminalBottomRef.current) return;
+    const viewport = terminalViewportRef.current;
+    if (!viewport) return;
+    const frame = window.requestAnimationFrame(() => {
+      viewport.scrollTo({ top: viewport.scrollHeight, behavior: "smooth" });
+    });
+    return () => window.cancelAnimationFrame(frame);
   }, [terminalLogs]);
 
   // Thoughts Auto-scrolling
@@ -916,8 +899,27 @@ function WorkspaceCockpit() {
     if (activeTab && code !== undefined) {
       setFiles(prev => ({ ...prev, [activeTab]: code }));
     }
+    setOpenTabs(prev => prev.includes(tabName) ? prev : [...prev, tabName]);
     setActiveFile(tabName);
     setCode(files[tabName] || "");
+  };
+
+  const handleCloseTab = (tabName: string, event: React.MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation();
+    if (activeTab && code !== undefined) {
+      setFiles(prev => ({ ...prev, [activeTab]: code }));
+    }
+
+    setOpenTabs(prev => {
+      const closingIndex = prev.indexOf(tabName);
+      const nextTabs = prev.filter(tab => tab !== tabName);
+      if (activeTab === tabName) {
+        const fallbackTab = nextTabs[Math.min(closingIndex, nextTabs.length - 1)] || "";
+        setActiveFile(fallbackTab);
+        setCode(fallbackTab ? files[fallbackTab] || "" : "");
+      }
+      return nextTabs;
+    });
   };
 
   // Deploy autonomous Antigravity solver loop
@@ -930,13 +932,10 @@ function WorkspaceCockpit() {
     setThoughtsLog([]);
     setCompletionProgress(5);
 
-    setTerminalLogs(prev => [
-      ...prev.slice(0, -1),
-      `agy 🧠 ${terminalCwd ? `(/${terminalCwd})` : "(/)"} >> ${agentCommand}`,
-      `[system] Spawning secure Antigravity CLI daemon...`,
-      `[system] Executing autonomous cognitive repair loops inside candidate_workspace/${problemSlug}...`,
-      `agy 🧠 ${terminalCwd ? `(/${terminalCwd})` : "(/)"} >> `
-    ]);
+    setTerminalLogs(prev => appendTerminalLogs(prev, [
+      terminalCommandLine(terminalCwd, agentCommand),
+      "[system] Starting official Antigravity SDK runner..."
+    ], terminalCwd));
 
     try {
       const response = await fetch("/api/execute", {
@@ -950,93 +949,60 @@ function WorkspaceCockpit() {
         })
       });
       const data = await response.json() as ExecuteResponse;
+      if (!response.ok || data.error) {
+        throw new Error(data.error || `Command failed with status ${response.status}`);
+      }
 
       const rawStdout = stripAnsiCodes(data.stdout || "");
       const rawStderr = stripAnsiCodes(data.stderr || "");
-      const lines = rawStdout.split("\n").concat(rawStderr.split("\n")).filter((l: string) => l.trim() !== "");
+      const rawText = `${rawStdout}\n${rawStderr}`;
+      const lines = normalizeTerminalLines(rawText.split("\n"));
+      const metricUsage = extractMetricUsage(rawText);
+      const traceEvents = extractThoughtEvents(lines);
 
-      // Sequence line playback for smooth cyberpunk streaming telemetry
-      let currentLineIdx = 0;
-      const playbackInterval = setInterval(async () => {
-        if (currentLineIdx >= lines.length) {
-          clearInterval(playbackInterval);
-          setIsRunning(false);
-          setCompletionProgress(100);
+      if (metricUsage) {
+        setTotalTokens(metricUsage.total);
+        setTotalCost(metricUsage.cost);
+      }
+      if (traceEvents.length > 0) {
+        setThoughtsLog(traceEvents);
+        setCompletionProgress(Math.min(90, 12 + traceEvents.length * 12));
+      }
 
-          // Re-fetch files from the workspace to load the agent's actual code modifications
-          try {
-            const res = await fetch(`/api/workspace?problemSlug=${problemSlug}`);
-            if (res.ok) {
-              const workspaceData = await res.json() as WorkspaceResponse;
-              setFiles(workspaceData.files);
-              if (activeTab && workspaceData.files[activeTab]) {
-                setCode(workspaceData.files[activeTab]);
-              }
-            }
-          } catch (e) {
-            console.error("Failed to re-sync files:", e);
-          }
-
-          setTerminalLogs(prev => [
-            ...prev.slice(0, -1),
-            `Finished autonomous agent pipeline. Sandbox workspace fully synchronized.`,
-            `agy 🧠 ${terminalCwd ? `(/${terminalCwd})` : "(/)"} >> `
-          ]);
-          return;
+      try {
+        const res = await fetch(`/api/workspace?problemSlug=${problemSlug}`);
+        if (res.ok) {
+          const workspaceData = await res.json() as WorkspaceResponse;
+          reconcileWorkspaceFiles(workspaceData);
         }
+      } catch (e) {
+        console.error("Failed to re-sync files:", e);
+      }
 
-        const line = lines[currentLineIdx];
-        currentLineIdx++;
-
-        // Render to virtual terminal screen
-        setTerminalLogs(prev => [
-          ...prev.slice(0, -1),
-          line,
-          `agy 🧠 ${terminalCwd ? `(/${terminalCwd})` : "(/)"} >> `
-        ]);
-
-        // Intercept log segments to extract thoughts & actions for the sidebar panel
-        if (line.includes("[THINKING]")) {
-          setTotalTokens(prev => prev + 1200 + Math.floor(Math.random() * 400));
-          setTotalCost(prev => parseFloat((prev + 0.0018 + Math.random() * 0.0006).toFixed(4)));
-          setCompletionProgress(prev => Math.min(85, prev + 12));
-
-          const cleanThought = line.replace(/.*\[THINKING\]/, "").trim();
-          setThoughtsLog(prev => [
-            ...prev,
-            `[STEP] THINKING: ${cleanThought}`
-          ]);
-        } else if (line.includes("[ACTION]")) {
-          setTotalTokens(prev => prev + 600 + Math.floor(Math.random() * 200));
-          setTotalCost(prev => parseFloat((prev + 0.0009 + Math.random() * 0.0003).toFixed(4)));
-          setCompletionProgress(prev => Math.min(95, prev + 8));
-
-          const cleanAction = line.replace(/.*\[ACTION\]/, "").trim();
-          setThoughtsLog(prev => [
-            ...prev,
-            `[STEP] EXECUTED: ${cleanAction}`
-          ]);
-        }
-      }, 150);
+      const completionLine = data.code === 0
+        ? "[system] SDK run complete. Workspace synchronized."
+        : `[system] SDK run exited with code ${data.code ?? 1}.`;
+      setTerminalLogs(prev => appendTerminalLogs(prev, [
+        ...(lines.length > 0 ? lines : ["Command completed with no terminal output."]),
+        completionLine
+      ], terminalCwd));
+      setCompletionProgress(100);
 
     } catch (err: unknown) {
-      setIsRunning(false);
-      setTerminalLogs(prev => [
-        ...prev.slice(0, -1),
+      setTerminalLogs(prev => appendTerminalLogs(prev, [
         `Error deploying agent: ${getErrorMessage(err)}`,
-        `agy 🧠 ${terminalCwd ? `(/${terminalCwd})` : "(/)"} >> `
-      ]);
+      ], terminalCwd));
+    } finally {
+      setIsRunning(false);
     }
   };
 
   // Run candidate unit test assertion suite
   const handleRunTests = async () => {
-    setTerminalLogs(prev => [
-      ...prev.slice(0, -1),
-      `agy 🧠 ${terminalCwd ? `(/${terminalCwd})` : "(/)"} >> antigravity test`,
-      `[system] Launching unit assertion suite (run_tests.py)...`,
-      `agy 🧠 ${terminalCwd ? `(/${terminalCwd})` : "(/)"} >> `
-    ]);
+    setTerminalLogs(prev => appendTerminalLogs(prev, [
+      terminalCommandLine(terminalCwd, "antigravity test"),
+      "[system] Running hidden validation suite..."
+    ], terminalCwd));
 
     try {
       const response = await fetch("/api/execute", {
@@ -1050,45 +1016,36 @@ function WorkspaceCockpit() {
         })
       });
       const data = await response.json() as ExecuteResponse;
+      if (!response.ok || data.error) {
+        throw new Error(data.error || `Command failed with status ${response.status}`);
+      }
 
-      const newLogs: string[] = [];
-      if (data.stdout) {
-        newLogs.push(...stripAnsiCodes(data.stdout).trim().split("\n"));
-      }
-      if (data.stderr) {
-        newLogs.push(...stripAnsiCodes(data.stderr).trim().split("\n"));
-      }
+      const newLogs = normalizeTerminalLines([
+        ...(data.stdout ? [data.stdout] : []),
+        ...(data.stderr ? [data.stderr] : [])
+      ]);
       if (newLogs.length === 0) {
         newLogs.push(`Tests executed. Exit Code: ${data.code}`);
       }
 
-      setTerminalLogs(prev => [
-        ...prev.slice(0, -4),
-        `agy 🧠 ${terminalCwd ? `(/${terminalCwd})` : "(/)"} >> antigravity test`,
+      setTerminalLogs(prev => appendTerminalLogs(prev, [
         ...newLogs,
-        `agy 🧠 ${terminalCwd ? `(/${terminalCwd})` : "(/)"} >> `
-      ]);
+      ], terminalCwd));
 
       // Re-fetch files from the workspace to load any changes
       try {
         const res = await fetch(`/api/workspace?problemSlug=${problemSlug}`);
         if (res.ok) {
           const workspaceData = await res.json() as WorkspaceResponse;
-          setFiles(workspaceData.files);
-          if (activeTab && workspaceData.files[activeTab]) {
-            setCode(workspaceData.files[activeTab]);
-          }
+          reconcileWorkspaceFiles(workspaceData);
         }
       } catch (e) {
         console.error("Failed to re-sync files:", e);
       }
     } catch (err: unknown) {
-      setTerminalLogs(prev => [
-        ...prev.slice(0, -4),
-        `agy 🧠 ${terminalCwd ? `(/${terminalCwd})` : "(/)"} >> antigravity test`,
+      setTerminalLogs(prev => appendTerminalLogs(prev, [
         `Error running tests: ${getErrorMessage(err)}`,
-        `agy 🧠 ${terminalCwd ? `(/${terminalCwd})` : "(/)"} >> `
-      ]);
+      ], terminalCwd));
     }
   };
 
@@ -1097,10 +1054,9 @@ function WorkspaceCockpit() {
     if (isRunning) return;
 
     setIsRunning(true);
-    setTerminalLogs(prev => [
-      ...prev.slice(0, -1),
-      `agy 🧠 ${terminalCwd ? `(/${terminalCwd})` : "(/)"} >> ${sysCommand}`
-    ]);
+    setTerminalLogs(prev => appendTerminalLogs(prev, [
+      terminalCommandLine(terminalCwd, sysCommand)
+    ], terminalCwd));
 
     try {
       const response = await fetch("/api/execute", {
@@ -1114,11 +1070,10 @@ function WorkspaceCockpit() {
         })
       });
 
-      if (!response.ok) {
-        throw new Error(`Command failed with status ${response.status}`);
-      }
-
       const data = await response.json() as ExecuteResponse;
+      if (!response.ok) {
+        throw new Error(data.error || `Command failed with status ${response.status}`);
+      }
 
       // Handle CD state updates back from server
       let nextCwd = terminalCwd;
@@ -1129,35 +1084,26 @@ function WorkspaceCockpit() {
 
       const rawStdout = stripAnsiCodes(data.stdout || "");
       const rawStderr = stripAnsiCodes(data.stderr || "");
-      const outLines = rawStdout.split("\n");
-      const errLines = rawStderr.split("\n");
-      const combinedLines = [...outLines, ...errLines].filter(l => l.trim() !== "");
+      const combinedLines = normalizeTerminalLines([rawStdout, rawStderr]);
 
-      setTerminalLogs(prev => [
-        ...prev,
+      setTerminalLogs(prev => appendTerminalLogs(prev, [
         ...combinedLines,
-        `agy 🧠 ${nextCwd ? `(/${nextCwd})` : "(/)"} >> `
-      ]);
+      ], nextCwd));
 
       // Re-fetch files in case shell command modified them
       try {
         const res = await fetch(`/api/workspace?problemSlug=${problemSlug}`);
         if (res.ok) {
           const workspaceData = await res.json() as WorkspaceResponse;
-          setFiles(workspaceData.files);
-          if (activeTab && workspaceData.files[activeTab]) {
-            setCode(workspaceData.files[activeTab]);
-          }
+          reconcileWorkspaceFiles(workspaceData);
         }
       } catch (e) {
         console.error("Failed to re-sync files:", e);
       }
     } catch (err: unknown) {
-      setTerminalLogs(prev => [
-        ...prev,
+      setTerminalLogs(prev => appendTerminalLogs(prev, [
         `Error running command: ${getErrorMessage(err)}`,
-        `agy 🧠 ${terminalCwd ? `(/${terminalCwd})` : "(/)"} >> `
-      ]);
+      ], terminalCwd));
     } finally {
       setIsRunning(false);
     }
@@ -1394,12 +1340,12 @@ function WorkspaceCockpit() {
       {/* Workspace Header */}
       <header className="min-h-14 border-b border-slate-800/80 bg-bg-panel/90 backdrop-blur-md flex flex-col md:flex-row md:items-center md:justify-between gap-2 px-3 sm:px-6 py-2 shrink-0 relative z-30">
         <div className="flex items-center gap-3 min-w-0 w-full md:w-auto">
-          <AuthAwareHomeLink ariaLabel="AntiCode dashboard" className="flex items-center gap-3 rounded-md transition-opacity hover:opacity-90 shrink-0">
+          <Link href="/dashboard" aria-label="AntiCode dashboard" className="flex items-center gap-3 rounded-md transition-opacity hover:opacity-90 shrink-0">
             <div className="w-6 h-6 rounded border border-agy-cyan/25 bg-bg-dark flex items-center justify-center overflow-hidden shadow-[0_0_8px_rgba(0,240,255,0.15)]">
               <img src="/assets/anticode_logo.svg" className="w-full h-full object-cover" alt="AntiCode Mini-Logo" />
             </div>
             <span className="font-extrabold tracking-wider text-xs">ANTICODE COCKPIT</span>
-          </AuthAwareHomeLink>
+          </Link>
           <span className="hidden sm:inline font-mono text-[9px] text-text-muted border-l border-slate-800 pl-3 uppercase truncate">
             MATRIX: {problemSlug}
           </span>
@@ -1415,6 +1361,14 @@ function WorkspaceCockpit() {
 
         {/* Play/Pause controls */}
         <div className="flex items-center gap-2 sm:gap-3 overflow-x-auto max-w-full w-full md:w-auto pb-1 md:pb-0">
+          <Link
+            href="/dashboard"
+            className="flex items-center gap-1.5 font-mono text-[10px] px-2.5 sm:px-3.5 py-1.5 rounded-lg border border-slate-700 hover:bg-slate-800 text-agy-cyan hover:text-white transition-all shrink-0 cursor-pointer"
+          >
+            <Layers className="w-3 h-3 text-agy-cyan" />
+            <span>DASHBOARD</span>
+          </Link>
+
           <button
             type="button"
             aria-label="Run tests"
