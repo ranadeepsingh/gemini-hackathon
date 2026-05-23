@@ -1,19 +1,15 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Terminal as TerminalIcon,
-  Cpu,
   Play,
-  Pause,
   RefreshCw,
   CheckCircle2,
   AlertTriangle,
   Activity,
-  Code2,
   Folder,
   Video,
   Mic,
@@ -22,15 +18,36 @@ import {
   Eye,
   Users,
   TrendingUp,
-  DollarSign,
   Layers,
-  ChevronRight,
   FileCode,
-  Zap,
   CheckCircle,
   Database
 } from "lucide-react";
+import AuthAwareHomeLink from "@/components/AuthAwareHomeLink";
 import { supabase } from "@/lib/supabase/client";
+
+const SUPABASE_CLIENT_TIMEOUT_MS = 3500;
+
+async function withClientTimeout<T>(
+  operation: PromiseLike<T>,
+  label: string,
+  timeoutMs = SUPABASE_CLIENT_TIMEOUT_MS
+): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
+  try {
+    return await Promise.race([
+      Promise.resolve(operation),
+      new Promise<T>((_, reject) => {
+        timeoutId = setTimeout(() => {
+          reject(new Error(`${label} timed out after ${timeoutMs}ms`));
+        }, timeoutMs);
+      })
+    ]);
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
+}
 
 // Basename helper for nested file paths
 function getBasename(filePath: string): string {
@@ -53,6 +70,10 @@ function isAgentCliCommand(command: string): boolean {
 
 function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+function stripAnsiCodes(text: string): string {
+  return text.replace(/\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])/g, "");
 }
 
 interface WorkspaceRubric {
@@ -208,13 +229,21 @@ function WorkspaceCockpit() {
   useEffect(() => {
     async function loadUserAndProfile() {
       try {
-        const { data: { user } } = await supabase.auth.getUser();
+        const { data: { user } } = await withClientTimeout(
+          supabase.auth.getUser(),
+          "Supabase auth lookup",
+          2500
+        );
         if (user) {
-          const { data: profileData } = await supabase
-            .from("profiles")
-            .select("*")
-            .eq("id", user.id)
-            .single();
+          const { data: profileData } = await withClientTimeout(
+            supabase
+              .from("profiles")
+              .select("*")
+              .eq("id", user.id)
+              .single(),
+            "Supabase profile lookup",
+            2500
+          );
           if (profileData) {
             setProfile(profileData);
           }
@@ -240,18 +269,24 @@ function WorkspaceCockpit() {
   useEffect(() => {
     async function loadRubrics() {
       try {
-        const { data: problemData } = await supabase
-          .from("problems")
-          .select("id")
-          .eq("slug", problemSlug)
-          .single();
+        const { data: problemData } = await withClientTimeout(
+          supabase
+            .from("problems")
+            .select("id")
+            .eq("slug", problemSlug)
+            .single(),
+          "Supabase problem rubric lookup"
+        );
 
         if (problemData) {
-          const { data: rubricsData } = await supabase
-            .from("challenge_rubrics")
-            .select("*")
-            .eq("problem_id", problemData.id)
-            .order("created_at", { ascending: true });
+          const { data: rubricsData } = await withClientTimeout(
+            supabase
+              .from("challenge_rubrics")
+              .select("*")
+              .eq("problem_id", problemData.id)
+              .order("created_at", { ascending: true }),
+            "Supabase challenge rubrics lookup"
+          );
 
           if (rubricsData && rubricsData.length > 0) {
             setRubrics(rubricsData.map(r => ({
@@ -277,11 +312,14 @@ function WorkspaceCockpit() {
 
     async function loadSessionDetails() {
       try {
-        const { data, error } = await supabase
-          .from("interview_sessions")
-          .select("*")
-          .eq("id", sessionId)
-          .single();
+        const { data } = await withClientTimeout(
+          supabase
+            .from("interview_sessions")
+            .select("*")
+            .eq("id", sessionId)
+            .single(),
+          "Supabase session telemetry lookup"
+        );
 
         if (data) {
           setTotalTokens(data.total_input_tokens + data.total_output_tokens);
@@ -449,8 +487,8 @@ function WorkspaceCockpit() {
       });
       const data = await response.json() as ExecuteResponse;
 
-      const rawStdout = data.stdout || "";
-      const rawStderr = data.stderr || "";
+      const rawStdout = stripAnsiCodes(data.stdout || "");
+      const rawStderr = stripAnsiCodes(data.stderr || "");
       const lines = rawStdout.split("\n").concat(rawStderr.split("\n")).filter((l: string) => l.trim() !== "");
 
       // Sequence line playback for smooth cyberpunk streaming telemetry
@@ -549,10 +587,10 @@ function WorkspaceCockpit() {
 
       const newLogs: string[] = [];
       if (data.stdout) {
-        newLogs.push(...data.stdout.trim().split("\n"));
+        newLogs.push(...stripAnsiCodes(data.stdout).trim().split("\n"));
       }
       if (data.stderr) {
-        newLogs.push(...data.stderr.trim().split("\n"));
+        newLogs.push(...stripAnsiCodes(data.stderr).trim().split("\n"));
       }
       if (newLogs.length === 0) {
         newLogs.push(`Tests executed. Exit Code: ${data.code}`);
@@ -617,10 +655,10 @@ function WorkspaceCockpit() {
 
       const newLogs: string[] = [];
       if (data.stdout) {
-        newLogs.push(...data.stdout.trim().split("\n"));
+        newLogs.push(...stripAnsiCodes(data.stdout).trim().split("\n"));
       }
       if (data.stderr) {
-        newLogs.push(...data.stderr.trim().split("\n"));
+        newLogs.push(...stripAnsiCodes(data.stderr).trim().split("\n"));
       }
       if (newLogs.length === 0) {
         newLogs.push(`Command finished with Exit Code ${data.code}`);
@@ -686,8 +724,10 @@ function WorkspaceCockpit() {
       const gradeReport = await response.json() as GradeReport;
 
       // If mock demo session, directly bypass to demo report parameters
+      const encodedGradeReport = encodeURIComponent(JSON.stringify(gradeReport));
+
       if (sessionId === "demo-session-id") {
-        router.push(`/reports/demo-report-id?problem=${problemSlug}&grade=${JSON.stringify(gradeReport)}`);
+        router.push(`/reports/demo-report-id?problem=${problemSlug}&grade=${encodedGradeReport}`);
         return;
       }
 
@@ -747,7 +787,7 @@ function WorkspaceCockpit() {
       if (data) {
         router.push(`/reports/${data.id}?problem=${problemSlug}`);
       } else {
-        router.push(`/reports/demo-report-id?problem=${problemSlug}&grade=${JSON.stringify(gradeReport)}`);
+        router.push(`/reports/demo-report-id?problem=${problemSlug}&grade=${encodedGradeReport}`);
       }
     } catch (err: unknown) {
       console.warn("Routing report fallback:", err);
@@ -763,77 +803,80 @@ function WorkspaceCockpit() {
       <div className="absolute inset-0 bg-scanlines opacity-[0.02] pointer-events-none" />
 
       {/* Workspace Header */}
-      <header className="h-14 border-b border-slate-800/80 bg-bg-panel/90 backdrop-blur-md flex items-center justify-between px-6 shrink-0 relative z-30">
-        <Link href="/" aria-label="AntiCode home" className="flex items-center gap-3 rounded-md transition-opacity hover:opacity-90">
-          <div className="w-6 h-6 rounded border border-agy-cyan/25 bg-bg-dark flex items-center justify-center overflow-hidden shadow-[0_0_8px_rgba(0,240,255,0.15)]">
-            <img src="/assets/anticode_logo.svg" className="w-full h-full object-cover" alt="AntiCode Mini-Logo" />
-          </div>
-          <span className="font-extrabold tracking-wider text-xs">ANTICODE COCKPIT</span>
-        </Link>
-        <div className="flex items-center gap-3">
-          <span className="font-mono text-[9px] text-text-muted border-l border-slate-800 pl-3 uppercase">
+      <header className="min-h-14 border-b border-slate-800/80 bg-bg-panel/90 backdrop-blur-md flex flex-col md:flex-row md:items-center md:justify-between gap-2 px-3 sm:px-6 py-2 shrink-0 relative z-30">
+        <div className="flex items-center gap-3 min-w-0 w-full md:w-auto">
+          <AuthAwareHomeLink ariaLabel="AntiCode dashboard" className="flex items-center gap-3 rounded-md transition-opacity hover:opacity-90 shrink-0">
+            <div className="w-6 h-6 rounded border border-agy-cyan/25 bg-bg-dark flex items-center justify-center overflow-hidden shadow-[0_0_8px_rgba(0,240,255,0.15)]">
+              <img src="/assets/anticode_logo.svg" className="w-full h-full object-cover" alt="AntiCode Mini-Logo" />
+            </div>
+            <span className="font-extrabold tracking-wider text-xs">ANTICODE COCKPIT</span>
+          </AuthAwareHomeLink>
+          <span className="hidden sm:inline font-mono text-[9px] text-text-muted border-l border-slate-800 pl-3 uppercase truncate">
             MATRIX: {problemSlug}
           </span>
-          <span className="font-mono text-[9px] text-text-muted border-l border-slate-800 pl-3 uppercase">
+          <span className="hidden lg:inline font-mono text-[9px] text-text-muted border-l border-slate-800 pl-3 uppercase">
             SESSION: {sessionId.substring(0, 8)}
           </span>
           {sessionDetails?.session_type && (
-            <span className="font-mono text-[9px] text-agy-violet border-l border-slate-800 pl-3 uppercase font-semibold">
+            <span className="hidden lg:inline font-mono text-[9px] text-agy-violet border-l border-slate-800 pl-3 uppercase font-semibold">
               MODE: {sessionDetails.session_type}
             </span>
           )}
         </div>
 
         {/* Play/Pause controls */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 overflow-x-auto max-w-full w-full md:w-auto pb-1 md:pb-0">
           <button
             type="button"
+            aria-label="Deploy agent"
             onClick={() => handleDeployAgent()}
             disabled={isRunning || isEvaluating}
-            className="flex items-center gap-1.5 font-mono text-[10px] px-3.5 py-1.5 rounded-lg border border-agy-green/20 bg-agy-green/5 text-agy-green hover:bg-agy-green/10 transition-all disabled:opacity-40 cursor-pointer"
+            className="flex items-center gap-1.5 font-mono text-[10px] px-2.5 sm:px-3.5 py-1.5 rounded-lg border border-agy-green/20 bg-agy-green/5 text-agy-green hover:bg-agy-green/10 transition-all disabled:opacity-40 cursor-pointer shrink-0"
           >
             <Play className="w-3 h-3 fill-agy-green" />
-            <span>DEPLOY AGENT</span>
+            <span className="hidden sm:inline">DEPLOY AGENT</span>
           </button>
 
           <button
             type="button"
+            aria-label="Run tests"
             onClick={handleRunTests}
             disabled={isRunning || isEvaluating}
-            className="flex items-center gap-1.5 font-mono text-[10px] px-3 py-1.5 rounded-lg border border-slate-700 hover:bg-slate-800 text-text-muted transition-all disabled:opacity-40 cursor-pointer animate-none"
+            className="flex items-center gap-1.5 font-mono text-[10px] px-2.5 sm:px-3 py-1.5 rounded-lg border border-slate-700 hover:bg-slate-800 text-text-muted transition-all disabled:opacity-40 cursor-pointer animate-none shrink-0"
           >
             <RefreshCw className={`w-3 h-3 ${isRunning ? "animate-spin" : ""}`} />
-            <span>RUN TESTS</span>
+            <span className="hidden sm:inline">RUN TESTS</span>
           </button>
 
           <button
             type="button"
+            aria-label="Evaluate and finish"
             onClick={handleFinishAndEvaluate}
             disabled={isRunning || isEvaluating}
-            className="flex items-center gap-1.5 font-mono text-[10px] px-4 py-1.5 rounded-lg bg-agy-cyan hover:bg-agy-cyan/90 text-bg-dark font-bold shadow-[0_0_15px_rgba(0,240,255,0.25)] hover:shadow-[0_0_25px_rgba(0,240,255,0.45)] transition-all disabled:opacity-40 cursor-pointer"
+            className="flex items-center gap-1.5 font-mono text-[10px] px-2.5 sm:px-4 py-1.5 rounded-lg bg-agy-cyan hover:bg-agy-cyan/90 text-bg-dark font-bold shadow-[0_0_15px_rgba(0,240,255,0.25)] hover:shadow-[0_0_25px_rgba(0,240,255,0.45)] transition-all disabled:opacity-40 cursor-pointer shrink-0"
           >
             <CheckCircle2 className="w-3.5 h-3.5" />
-            <span>{isEvaluating ? "EVALUATING..." : "EVALUATE & FINISH"}</span>
+            <span className="hidden sm:inline">{isEvaluating ? "EVALUATING..." : "EVALUATE & FINISH"}</span>
           </button>
         </div>
       </header>
 
       {/* Main Split Grid */}
-      <div className="flex-1 flex overflow-hidden min-h-0 relative">
+      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden min-h-0 relative">
 
         {/* Left Side: IDE & Terminal (60% width) */}
-        <div className="w-[60%] border-r border-slate-800/80 flex flex-col h-full overflow-hidden">
+        <div className="w-full lg:w-[60%] h-[55%] lg:h-full border-b lg:border-b-0 lg:border-r border-slate-800/80 flex flex-col overflow-hidden">
 
           {/* Active Physical IDE (Top Panel 60% height) */}
           <div className="h-[60%] flex flex-col border-b border-slate-800/80 bg-bg-dark/40 overflow-hidden">
             {/* File explorer tabs */}
-            <div className="h-9 border-b border-slate-800/80 bg-bg-panel/40 flex items-center justify-between px-4 text-xs font-mono text-text-muted shrink-0 overflow-x-auto overflow-y-hidden">
-              <div className="flex items-center gap-1 shrink-0">
+            <div className="h-9 border-b border-slate-800/80 bg-bg-panel/40 flex items-center gap-2 px-3 sm:px-4 text-xs font-mono text-text-muted shrink-0 overflow-x-auto overflow-y-hidden">
+              <div className="hidden sm:flex items-center gap-1 shrink-0">
                 <Folder className="w-3.5 h-3.5 text-text-muted" />
                 <span>workspace_sand/</span>
                 <span className="text-text-muted/60">({problemSlug})</span>
               </div>
-              <div className="flex items-center gap-1.5 shrink-0 pl-4">
+              <div className="flex items-center gap-1.5 shrink-0 sm:pl-4">
                 {Object.keys(files).map((filePath) => {
                   const isSelected = activeTab === filePath;
                   const basename = getBasename(filePath);
@@ -944,7 +987,7 @@ function WorkspaceCockpit() {
         </div>
 
         {/* Right Side: Telemetry Metrics & Participant Panel (40% width) */}
-        <div className="w-[40%] bg-bg-panel/25 flex flex-col h-full overflow-hidden">
+        <div className="w-full lg:w-[40%] h-[45%] lg:h-full bg-bg-panel/25 flex flex-col overflow-hidden">
 
           {/* Participant Presence HUD / Mocked WebRTC Presence Dashboard */}
           <div className="p-5 border-b border-slate-800/80 bg-bg-panel/50 space-y-4 shrink-0">
@@ -1081,10 +1124,11 @@ function WorkspaceCockpit() {
                       `interview@anticode-vm:~$ `
                     ]);
                   }}
-                  className="py-2 px-2 rounded-lg border border-agy-cyan/30 bg-agy-cyan/5 text-agy-cyan hover:bg-agy-cyan/10 font-mono text-[9px] font-semibold flex items-center justify-center gap-1 cursor-pointer transition-all"
+                  disabled={vmPatched}
+                  className="py-2 px-2 rounded-lg border border-agy-cyan/30 bg-agy-cyan/5 text-agy-cyan hover:bg-agy-cyan/10 font-mono text-[9px] font-semibold flex items-center justify-center gap-1 cursor-pointer transition-all disabled:opacity-40"
                 >
                   <RefreshCw className="w-3 h-3" />
-                  <span>HOT-PATCH VM</span>
+                  <span>{vmPatched ? "VM PATCHED" : "HOT-PATCH VM"}</span>
                 </button>
 
                 <button

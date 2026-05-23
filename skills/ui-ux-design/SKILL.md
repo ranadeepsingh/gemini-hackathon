@@ -1,11 +1,11 @@
 ---
 name: ui-ux-design
-description: Design principles, custom theme tokens, typography, layout structures, and Framer Motion animation configurations for YeetCode.
+description: Design principles, custom theme tokens, typography, layout structures, and Framer Motion animation configurations for AntiCode.
 ---
 
-# YeetCode Futuristic UI/UX Design System
+# AntiCode Futuristic UI/UX Design System
 
-This skill outlines the styling guidelines, color themes, grid classes, and animations required to maintain and extend the high-fidelity cyberpunk aesthetic across the YeetCode platform.
+This skill outlines the styling guidelines, color themes, grid classes, and animations required to maintain and extend the high-fidelity cyberpunk aesthetic across the AntiCode platform.
 
 ## 1. Color Palette & Typography
 The interface is designed with a premium, sleek developer cockpit aesthetic. Avoid generic browser defaults. Use the following CSS variables and classes (defined in [src/app/globals.css](file:///Users/rana-ms-work/Documents/gemini-hackathon/src/app/globals.css)):

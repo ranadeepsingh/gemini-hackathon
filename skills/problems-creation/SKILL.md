@@ -1,11 +1,11 @@
 ---
 name: problems-creation
-description: Standard workflow for seeding, formatting, uploading, and instantiating YeetCode challenges and GCE sandboxes.
+description: Standard workflow for seeding, formatting, uploading, and instantiating AntiCode challenges and GCE sandboxes.
 ---
 
-# YeetCode Problems & Assignment Creation
+# AntiCode Problems & Assignment Creation
 
-This skill governs the addition, modification, and management of coding challenges and virtual sandbox environments on the YeetCode platform.
+This skill governs the addition, modification, and management of coding challenges and virtual sandbox environments on the AntiCode platform.
 
 ## 1. Challenge Data Structure
 Every challenge is defined by a strict structure in both the Supabase `public.problems` table and the offline fallback system (`LOCAL_FALLBACK_PROBLEMS` in [problems/page.tsx](file:///Users/rana-ms-work/Documents/gemini-hackathon/src/app/problems/page.tsx)):
@@ -42,7 +42,7 @@ When adding or auditing test suites, ensure they conform to the schema:
 
 ## 3. Sandboxed GCE Instance Provisioning
 When a user launches a challenge session, the system inserts a record in `public.interview_sessions` which kicks off an automated provisioning sequence:
-- **GCE Instance Name**: `yeetcode-sandbox-[slug]-[random_id]`
+- **GCE Instance Name**: `anticode-sandbox-[slug]-[random_id]`
 - **Zone**: `us-central1-a`
 - **Core OS Model**: Ubuntu 24.04 LTS
 - **Network Boundaries**: Outbound/Egress internet blocked to prevent code leakage or scraping.
