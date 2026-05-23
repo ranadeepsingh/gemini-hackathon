@@ -5,10 +5,13 @@
   --color-bg-panel: #0b0f17;
   --color-border-subtle: #1e293b;
   --color-agy-green: #00ff66;
+  --color-agy-green-bright: #7cffb2;
   --color-agy-cyan: #00f0ff;
   --color-agy-violet: #8b5cf6;
   --color-text-main: #f8fafc;
   --color-text-muted: #94a3b8;
+  --color-text-green: #5dff9c;
+  --color-text-red: #f87171;
   
   --font-sans: 'Inter', 'Outfit', sans-serif;
   --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
@@ -24,6 +27,29 @@ body {
   color: var(--foreground);
   overflow-x: hidden;
   font-family: var(--font-sans);
+  background-image: 
+    radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.03) 0px, transparent 50%),
+    radial-gradient(at 100% 100%, rgba(6, 182, 212, 0.03) 0px, transparent 50%);
+  background-attachment: fixed;
+}
+
+a,
+button,
+input,
+select,
+textarea,
+label[for] {
+  touch-action: manipulation;
+}
+
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+label[for]:focus-visible {
+  outline: 2px solid #00f0ff;
+  outline-offset: 3px;
 }
 
 /* Custom Scrollbars */
@@ -42,12 +68,26 @@ body {
   background: #00f0ff;
 }
 
-/* Cyberpunk terminal grid background */
+/* Google Antigravity Interactive Grid Overlay */
 .grid-overlay {
   background-image: 
-    linear-gradient(to right, rgba(30, 41, 59, 0.1) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(30, 41, 59, 0.1) 1px, transparent 1px);
-  background-size: 40px 40px;
+    linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+  background-size: 50px 50px;
+  pointer-events: none;
+}
+
+.bg-cyber-grid {
+  background-image:
+    linear-gradient(to right, rgba(30, 41, 59, 0.35) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(30, 41, 59, 0.35) 1px, transparent 1px);
+}
+
+.bg-scanlines {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.18) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 240, 255, 0.08), rgba(139, 92, 246, 0.08));
+  background-size: 100% 4px, 8px 100%;
 }
 
 /* Hologram scanline effect */

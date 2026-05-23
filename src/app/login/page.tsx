@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
@@ -145,22 +146,24 @@ export default function LoginPage() {
       <div className="relative w-full max-w-[500px]">
         {/* Glow Header */}
         <div className="flex flex-col items-center mb-8 text-center">
-          <motion.div 
-            initial={{ scale: 0.8, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ duration: 0.5, type: "spring" }}
-            className="relative flex items-center justify-center w-16 h-16 rounded-xl border border-agy-green/30 bg-bg-panel/80 shadow-[0_0_20px_rgba(0,255,102,0.15)] mb-4 overflow-hidden"
-          >
-            <div className="absolute inset-0 bg-gradient-to-br from-agy-green/10 to-transparent" />
-            <img src="/assets/yeetcode_logo.png" className="w-12 h-12 object-contain" alt="YeetCode Logo" />
-          </motion.div>
+          <Link href="/" aria-label="AntiCode home" className="rounded-xl">
+            <motion.div 
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ duration: 0.5, type: "spring" }}
+              className="relative flex items-center justify-center w-16 h-16 rounded-xl border border-agy-green/30 bg-bg-panel/80 shadow-[0_0_20px_rgba(0,255,102,0.15)] mb-4 overflow-hidden transition-transform hover:scale-105"
+            >
+              <div className="absolute inset-0 bg-gradient-to-br from-agy-green/10 to-transparent" />
+              <img src="/assets/anticode_logo.svg" className="w-12 h-12 object-contain" alt="AntiCode Logo" />
+            </motion.div>
+          </Link>
           <motion.h1 
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: 0.1 }}
             className="text-4xl font-extrabold tracking-wider bg-clip-text text-transparent bg-gradient-to-r from-white via-text-main to-agy-green"
           >
-            YEETCODE
+            ANTICODE
           </motion.h1>
           <motion.p 
             initial={{ y: 20, opacity: 0 }}
@@ -185,6 +188,8 @@ export default function LoginPage() {
           {/* Tab selector */}
           <div className="flex border-b border-slate-800/80 mb-6 font-mono text-xs">
             <button
+              type="button"
+              aria-pressed={authMode === "magic-link"}
               onClick={() => { setAuthMode("magic-link"); setMessage(null); }}
               className={`flex-1 pb-3 text-center transition-colors relative cursor-pointer ${
                 authMode === "magic-link" ? "text-agy-green font-bold" : "text-text-muted hover:text-white"
@@ -199,6 +204,8 @@ export default function LoginPage() {
               )}
             </button>
             <button
+              type="button"
+              aria-pressed={authMode === "signin"}
               onClick={() => { setAuthMode("signin"); setMessage(null); }}
               className={`flex-1 pb-3 text-center transition-colors relative cursor-pointer ${
                 authMode === "signin" ? "text-agy-green font-bold" : "text-text-muted hover:text-white"
@@ -213,6 +220,8 @@ export default function LoginPage() {
               )}
             </button>
             <button
+              type="button"
+              aria-pressed={authMode === "signup"}
               onClick={() => { setAuthMode("signup"); setMessage(null); }}
               className={`flex-1 pb-3 text-center transition-colors relative cursor-pointer ${
                 authMode === "signup" ? "text-agy-green font-bold" : "text-text-muted hover:text-white"
@@ -241,7 +250,7 @@ export default function LoginPage() {
                 >
                   {/* Full Name Field */}
                   <div>
-                    <label className="block text-xs font-mono text-text-muted uppercase tracking-wider mb-1.5 pl-1">
+                    <label htmlFor="full-name" className="block text-xs font-mono text-text-muted uppercase tracking-wider mb-1.5 pl-1">
                       Full Name
                     </label>
                     <div className="relative">
@@ -249,6 +258,7 @@ export default function LoginPage() {
                         <User className="w-4 h-4" />
                       </div>
                       <input
+                        id="full-name"
                         type="text"
                         required={authMode === "signup"}
                         value={fullName}
@@ -261,7 +271,7 @@ export default function LoginPage() {
 
                   {/* Username/Alias Field */}
                   <div>
-                    <label className="block text-xs font-mono text-text-muted uppercase tracking-wider mb-1.5 pl-1">
+                    <label htmlFor="identity-handle" className="block text-xs font-mono text-text-muted uppercase tracking-wider mb-1.5 pl-1">
                       Identity Handle / Alias
                     </label>
                     <div className="relative">
@@ -269,6 +279,7 @@ export default function LoginPage() {
                         <Terminal className="w-4 h-4" />
                       </div>
                       <input
+                        id="identity-handle"
                         type="text"
                         required={authMode === "signup"}
                         value={username}
@@ -281,9 +292,9 @@ export default function LoginPage() {
 
                   {/* Access Role Selector */}
                   <div>
-                    <label className="block text-xs font-mono text-text-muted uppercase tracking-wider mb-1.5 pl-1">
+                    <div className="block text-xs font-mono text-text-muted uppercase tracking-wider mb-1.5 pl-1">
                       Identity Access Role
-                    </label>
+                    </div>
                     <div className="grid grid-cols-2 gap-3">
                       <button
                         type="button"
@@ -317,7 +328,7 @@ export default function LoginPage() {
 
             {/* Email Field */}
             <div>
-              <label className="block text-xs font-mono text-text-muted uppercase tracking-wider mb-1.5 pl-1">
+              <label htmlFor="security-email" className="block text-xs font-mono text-text-muted uppercase tracking-wider mb-1.5 pl-1">
                 Security Identity Email
               </label>
               <div className="relative">
@@ -325,6 +336,7 @@ export default function LoginPage() {
                   <Mail className="w-4 h-4" />
                 </div>
                 <input
+                  id="security-email"
                   type="email"
                   required
                   value={email}
@@ -345,7 +357,7 @@ export default function LoginPage() {
                   transition={{ duration: 0.2 }}
                   className="overflow-hidden mt-1"
                 >
-                  <label className="block text-xs font-mono text-text-muted uppercase tracking-wider mb-1.5 pl-1">
+                  <label htmlFor="node-keyphrase" className="block text-xs font-mono text-text-muted uppercase tracking-wider mb-1.5 pl-1">
                     Node Keyphrase
                   </label>
                   <div className="relative">
@@ -353,6 +365,7 @@ export default function LoginPage() {
                       <KeyRound className="w-4 h-4" />
                     </div>
                     <input
+                      id="node-keyphrase"
                       type="password"
                       required={authMode === "signin" || authMode === "signup"}
                       value={password}
@@ -420,6 +433,7 @@ export default function LoginPage() {
           {/* Quick Demo Bypass (Venture Presentation Mode) */}
           <div className="grid grid-cols-2 gap-3.5">
             <button
+              type="button"
               onClick={() => handleQuickDemoBypass("candidate")}
               disabled={isLoading}
               className="group py-2.5 px-3 rounded-xl border border-slate-800 hover:border-agy-cyan/40 bg-bg-dark/40 hover:bg-agy-cyan/5 transition-all duration-300 font-mono text-xs text-text-muted hover:text-agy-cyan flex flex-col items-center gap-1.5 cursor-pointer"
@@ -428,6 +442,7 @@ export default function LoginPage() {
               <span>USER VIEW</span>
             </button>
             <button
+              type="button"
               onClick={() => handleQuickDemoBypass("interviewer")}
               disabled={isLoading}
               className="group py-2.5 px-3 rounded-xl border border-slate-800 hover:border-agy-violet/40 bg-bg-dark/40 hover:bg-agy-violet/5 transition-all duration-300 font-mono text-xs text-text-muted hover:text-agy-violet flex flex-col items-center gap-1.5 cursor-pointer"

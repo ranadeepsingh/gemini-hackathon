@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -327,9 +328,9 @@ function WorkspaceCockpit() {
     async function loadWorkspace() {
       try {
         setTerminalLogs([
-          `YeetCode Virtual Sandbox Environment initializing...`,
+          `AntiCode Virtual Sandbox Environment initializing...`,
           `Establishing connection to GCE VM node: us-central-4a...`,
-          `interview@yeetcode-vm:~$ `
+          `interview@anticode-vm:~$ `
         ]);
 
         const res = await fetch(`/api/workspace?problemSlug=${problemSlug}`);
@@ -343,18 +344,18 @@ function WorkspaceCockpit() {
         setCode(data.files[data.activeFile] || "");
 
         setTerminalLogs([
-          `YeetCode Virtual Sandbox Environment initialized.`,
+          `AntiCode Virtual Sandbox Environment initialized.`,
           `Connection established to isolated GCE node: dev-cluster-4a`,
           `Type 'antigravity prompt "your instruction"' to direct the agent against this project.`,
           `Hidden validation tests are mounted outside the editable workspace.`,
-          `interview@yeetcode-vm:~$ `
+          `interview@anticode-vm:~$ `
         ]);
       } catch (err: unknown) {
         console.error(err);
         if (active) {
           setTerminalLogs([
             `Error initializing workspace sandbox: ${getErrorMessage(err)}`,
-            `interview@yeetcode-vm:~$ `
+            `interview@anticode-vm:~$ `
           ]);
         }
       }
@@ -434,7 +435,7 @@ function WorkspaceCockpit() {
       agentCommand,
       `[system] Spawning secure Antigravity CLI daemon...`,
       `[system] Executing autonomous cognitive repair loops inside candidate_workspace/${problemSlug}...`,
-      `interview@yeetcode-vm:~$ `
+      `interview@anticode-vm:~$ `
     ]);
 
     try {
@@ -477,7 +478,7 @@ function WorkspaceCockpit() {
           setTerminalLogs(prev => [
             ...prev.slice(0, -1),
             `Finished autonomous agent pipeline. Sandbox workspace fully synchronized.`,
-            `interview@yeetcode-vm:~$ `
+            `interview@anticode-vm:~$ `
           ]);
           return;
         }
@@ -489,7 +490,7 @@ function WorkspaceCockpit() {
         setTerminalLogs(prev => [
           ...prev.slice(0, -1),
           line,
-          `interview@yeetcode-vm:~$ `
+          `interview@anticode-vm:~$ `
         ]);
 
         // Intercept log segments to extract thoughts & actions for the sidebar panel
@@ -521,7 +522,7 @@ function WorkspaceCockpit() {
       setTerminalLogs(prev => [
         ...prev.slice(0, -1),
         `Error deploying agent: ${getErrorMessage(err)}`,
-        `interview@yeetcode-vm:~$ `
+        `interview@anticode-vm:~$ `
       ]);
     }
   };
@@ -532,7 +533,7 @@ function WorkspaceCockpit() {
       ...prev.slice(0, -1),
       `antigravity test`,
       `[system] Launching unit assertion suite (run_tests.py)...`,
-      `interview@yeetcode-vm:~$ `
+      `interview@anticode-vm:~$ `
     ]);
 
     try {
@@ -561,14 +562,14 @@ function WorkspaceCockpit() {
         ...prev.slice(0, -4),
         `antigravity test`,
         ...newLogs,
-        `interview@yeetcode-vm:~$ `
+        `interview@anticode-vm:~$ `
       ]);
     } catch (err: unknown) {
       setTerminalLogs(prev => [
         ...prev.slice(0, -4),
         `antigravity test`,
         `Error running tests: ${getErrorMessage(err)}`,
-        `interview@yeetcode-vm:~$ `
+        `interview@anticode-vm:~$ `
       ]);
     }
   };
@@ -582,7 +583,7 @@ function WorkspaceCockpit() {
     setTerminalInput("");
 
     if (cmd === "clear") {
-      setTerminalLogs([`interview@yeetcode-vm:~$ `]);
+      setTerminalLogs([`interview@anticode-vm:~$ `]);
       return;
     }
 
@@ -600,7 +601,7 @@ function WorkspaceCockpit() {
       ...prev.slice(0, -1),
       `${cmd}`,
       `Executing command inside isolated VM container...`,
-      `interview@yeetcode-vm:~$ `
+      `interview@anticode-vm:~$ `
     ]);
 
     try {
@@ -629,14 +630,14 @@ function WorkspaceCockpit() {
         ...prev.slice(0, -4),
         `${cmd}`,
         ...newLogs,
-        `interview@yeetcode-vm:~$ `
+        `interview@anticode-vm:~$ `
       ]);
     } catch (err: unknown) {
       setTerminalLogs(prev => [
         ...prev.slice(0, -4),
         `${cmd}`,
         `Error: ${getErrorMessage(err)}`,
-        `interview@yeetcode-vm:~$ `
+        `interview@anticode-vm:~$ `
       ]);
     }
   };
@@ -649,7 +650,7 @@ function WorkspaceCockpit() {
       setTerminalLogs(prev => [
         ...prev.slice(0, -1),
         `[WARNING] Cannot trigger evaluation: Rubric weights sum to ${(weightSum * 100).toFixed(0)}%, but must equal exactly 100%.`,
-        `interview@yeetcode-vm:~$ `
+        `interview@anticode-vm:~$ `
       ]);
       return;
     }
@@ -661,7 +662,7 @@ function WorkspaceCockpit() {
     setTerminalLogs(prev => [
       ...prev.slice(0, -1),
       `[system] Submitting sandbox code files for Best-of-3 Gemini Consensus evaluation...`,
-      `interview@yeetcode-vm:~$ `
+      `interview@anticode-vm:~$ `
     ]);
 
     try {
@@ -763,11 +764,13 @@ function WorkspaceCockpit() {
 
       {/* Workspace Header */}
       <header className="h-14 border-b border-slate-800/80 bg-bg-panel/90 backdrop-blur-md flex items-center justify-between px-6 shrink-0 relative z-30">
-        <div className="flex items-center gap-3">
+        <Link href="/" aria-label="AntiCode home" className="flex items-center gap-3 rounded-md transition-opacity hover:opacity-90">
           <div className="w-6 h-6 rounded border border-agy-cyan/25 bg-bg-dark flex items-center justify-center overflow-hidden shadow-[0_0_8px_rgba(0,240,255,0.15)]">
-            <img src="/assets/yeetcode_logo.png" className="w-full h-full object-cover" alt="YeetCode Mini-Logo" />
+            <img src="/assets/anticode_logo.svg" className="w-full h-full object-cover" alt="AntiCode Mini-Logo" />
           </div>
-          <span className="font-extrabold tracking-wider text-xs">YEETCODE COCKPIT</span>
+          <span className="font-extrabold tracking-wider text-xs">ANTICODE COCKPIT</span>
+        </Link>
+        <div className="flex items-center gap-3">
           <span className="font-mono text-[9px] text-text-muted border-l border-slate-800 pl-3 uppercase">
             MATRIX: {problemSlug}
           </span>
@@ -784,6 +787,7 @@ function WorkspaceCockpit() {
         {/* Play/Pause controls */}
         <div className="flex items-center gap-3">
           <button
+            type="button"
             onClick={() => handleDeployAgent()}
             disabled={isRunning || isEvaluating}
             className="flex items-center gap-1.5 font-mono text-[10px] px-3.5 py-1.5 rounded-lg border border-agy-green/20 bg-agy-green/5 text-agy-green hover:bg-agy-green/10 transition-all disabled:opacity-40 cursor-pointer"
@@ -793,6 +797,7 @@ function WorkspaceCockpit() {
           </button>
 
           <button
+            type="button"
             onClick={handleRunTests}
             disabled={isRunning || isEvaluating}
             className="flex items-center gap-1.5 font-mono text-[10px] px-3 py-1.5 rounded-lg border border-slate-700 hover:bg-slate-800 text-text-muted transition-all disabled:opacity-40 cursor-pointer animate-none"
@@ -802,6 +807,7 @@ function WorkspaceCockpit() {
           </button>
 
           <button
+            type="button"
             onClick={handleFinishAndEvaluate}
             disabled={isRunning || isEvaluating}
             className="flex items-center gap-1.5 font-mono text-[10px] px-4 py-1.5 rounded-lg bg-agy-cyan hover:bg-agy-cyan/90 text-bg-dark font-bold shadow-[0_0_15px_rgba(0,240,255,0.25)] hover:shadow-[0_0_25px_rgba(0,240,255,0.45)] transition-all disabled:opacity-40 cursor-pointer"
@@ -833,8 +839,11 @@ function WorkspaceCockpit() {
                   const basename = getBasename(filePath);
                   return (
                     <button
+                      type="button"
                       key={filePath}
                       onClick={() => handleTabChange(filePath)}
+                      aria-pressed={isSelected}
+                      aria-label={`Open file ${filePath}`}
                       className={`px-3.5 py-1.5 border-r border-l border-slate-800 flex items-center gap-1.5 relative cursor-pointer text-[11px] ${
                         isSelected ? "bg-bg-dark text-white font-semibold" : "text-text-muted hover:text-white"
                       }`}
@@ -859,6 +868,7 @@ function WorkspaceCockpit() {
               </div>
               <div className="flex-1 h-full relative">
                 <textarea
+                  aria-label={`Editor for ${activeTab || "workspace file"}`}
                   value={code}
                   onChange={(e) => setCode(e.target.value)}
                   spellCheck="false"
@@ -889,7 +899,7 @@ function WorkspaceCockpit() {
             {/* Logs Area */}
             <div className="flex-1 overflow-auto p-4 font-mono text-[11px] leading-relaxed space-y-1.5 select-text">
               {terminalLogs.map((log, i) => {
-                const isUserPrompt = log.includes("interview@yeetcode-vm");
+                const isUserPrompt = log.includes("interview@anticode-vm");
                 const isAgentCall = log.includes("antigravity agent calling") || log.includes("[antigravity agent]");
                 const isAgentThought = log.includes("antigravity agent:");
                 const isPassed = log.includes("PASSED") || log.includes("SUCCESS");
@@ -918,9 +928,10 @@ function WorkspaceCockpit() {
 
             {/* Command form field */}
             <form onSubmit={handleTerminalSubmit} className="h-9 border-t border-slate-800/80 bg-bg-panel/20 flex items-center px-4 font-mono text-xs">
-              <span className="text-agy-cyan font-semibold mr-1.5 shrink-0">interview@yeetcode-vm:~$</span>
+              <span className="text-agy-cyan font-semibold mr-1.5 shrink-0">interview@anticode-vm:~$</span>
               <input
                 type="text"
+                aria-label="Terminal command"
                 value={terminalInput}
                 onChange={(e) => setTerminalInput(e.target.value)}
                 disabled={isRunning || isEvaluating}
@@ -977,6 +988,8 @@ function WorkspaceCockpit() {
             <div className="flex justify-between items-center bg-bg-dark/40 border border-slate-800/40 px-4 py-2 rounded-lg font-mono text-[10px] text-text-muted">
               <div className="flex gap-4">
                 <button
+                  type="button"
+                  aria-pressed={audioOn}
                   onClick={() => setAudioOn(!audioOn)}
                   className={`flex items-center gap-1.5 transition-colors cursor-pointer ${audioOn ? "text-agy-green" : "text-text-muted hover:text-white"}`}
                 >
@@ -984,6 +997,8 @@ function WorkspaceCockpit() {
                   <span>{audioOn ? "AUDIO: LIVE" : "MUTED"}</span>
                 </button>
                 <button
+                  type="button"
+                  aria-pressed={videoOn}
                   onClick={() => setVideoOn(!videoOn)}
                   className={`flex items-center gap-1.5 transition-colors cursor-pointer ${videoOn ? "text-agy-green" : "text-text-muted hover:text-white"}`}
                 >
@@ -1004,7 +1019,7 @@ function WorkspaceCockpit() {
               <div className="flex items-center justify-between border-b border-agy-violet/20 pb-2 shrink-0">
                 <h4 className="font-mono text-[10px] font-bold tracking-widest text-agy-violet uppercase flex items-center gap-1.5">
                   <Database className="w-3.5 h-3.5 animate-pulse" />
-                  🌌 INTERVIEWER SYSTEM CONTROL DECK
+                  INTERVIEWER SYSTEM CONTROL DECK
                 </h4>
                 <span className="font-mono text-[8px] bg-agy-violet/20 text-agy-violet border border-agy-violet/30 px-1.5 py-0.5 rounded uppercase font-semibold">
                   ESCALATED PRIVILEGES
@@ -1014,6 +1029,8 @@ function WorkspaceCockpit() {
               {/* Grid controls */}
               <div className="grid grid-cols-2 gap-2.5">
                 <button
+                  type="button"
+                  aria-pressed={showSolution}
                   onClick={() => setShowSolution(!showSolution)}
                   className={`py-2 px-2 rounded-lg border font-mono text-[9px] font-semibold flex items-center justify-center gap-1 cursor-pointer transition-all ${
                     showSolution
@@ -1026,6 +1043,7 @@ function WorkspaceCockpit() {
                 </button>
 
                 <button
+                  type="button"
                   onClick={() => {
                     setInjectedStrain(true);
                     setThoughtsLog(prev => [
@@ -1039,7 +1057,7 @@ function WorkspaceCockpit() {
                       ...prev.slice(0, -1),
                       `[WARNING] --- ESCALATED ANOMALY STRAIN LOADED ---`,
                       `[VM CLUSTER] Dynamic network delay increased by 150ms.`,
-                      `interview@yeetcode-vm:~$ `
+                      `interview@anticode-vm:~$ `
                     ]);
                   }}
                   disabled={injectedStrain}
@@ -1050,6 +1068,7 @@ function WorkspaceCockpit() {
                 </button>
 
                 <button
+                  type="button"
                   onClick={() => {
                     setVmPatched(true);
                     setTerminalLogs(prev => [
@@ -1059,7 +1078,7 @@ function WorkspaceCockpit() {
                       `[system] Flush file cache: SUCCESS`,
                       `[system] Recalibrating VPC firewall parameters...`,
                       `[system] Core sandbox fully synchronized and refreshed!`,
-                      `interview@yeetcode-vm:~$ `
+                      `interview@anticode-vm:~$ `
                     ]);
                   }}
                   className="py-2 px-2 rounded-lg border border-agy-cyan/30 bg-agy-cyan/5 text-agy-cyan hover:bg-agy-cyan/10 font-mono text-[9px] font-semibold flex items-center justify-center gap-1 cursor-pointer transition-all"
@@ -1069,6 +1088,7 @@ function WorkspaceCockpit() {
                 </button>
 
                 <button
+                  type="button"
                   onClick={() => {
                     setCompletionProgress(100);
                     setTerminalLogs(prev => [
@@ -1077,7 +1097,7 @@ function WorkspaceCockpit() {
                       `[system] Initiating test bypass sequence...`,
                       `[system] Override local unit-test results...`,
                       `[system] 3/3 secret validation cases passed (FORCED BY INTERVIEWER)`,
-                      `interview@yeetcode-vm:~$ `
+                      `interview@anticode-vm:~$ `
                     ]);
                   }}
                   className="py-2 px-2 rounded-lg border border-agy-green/30 bg-agy-green/5 text-agy-green hover:bg-agy-green/10 font-mono text-[9px] font-semibold flex items-center justify-center gap-1 cursor-pointer transition-all"
@@ -1097,7 +1117,7 @@ function WorkspaceCockpit() {
                     className="border border-agy-violet/25 bg-bg-dark/85 rounded-lg p-3.5 font-mono text-[9px] leading-relaxed text-text-muted space-y-2.5 relative overflow-hidden shadow-[inset_0_2px_4px_rgba(0,0,0,0.5)]"
                   >
                     <div className="font-semibold text-agy-violet uppercase border-b border-agy-violet/20 pb-1.5 flex justify-between">
-                      <span>🔑 REFERENCE ARCHITECTURE GUIDE</span>
+                      <span>REFERENCE ARCHITECTURE GUIDE</span>
                     </div>
                     {problemSlug === "agentic-matrix-optimizer" ? (
                       <div className="space-y-1.5">
@@ -1141,6 +1161,7 @@ function WorkspaceCockpit() {
                       <div className="flex items-center gap-2">
                         <input
                           type="range" min="0" max="100" step="5"
+                          aria-label={`${rubric.metric_label} weight`}
                           value={Math.round(rubric.weight * 100)}
                           onChange={(e) => {
                             const newWeight = parseInt(e.target.value) / 100;

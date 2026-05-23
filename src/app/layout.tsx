@@ -18,7 +18,7 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "YeetCode | Agentic Engineering Interview Platform",
+  title: "AntiCode | Agentic Engineering Interview Platform",
   description: "The premium AI-native engineering interview platform built on Google Cloud Platform and Gemini 3.5. Evaluate human-agent collaboration, skill architecture, and prompt safety.",
 };
 

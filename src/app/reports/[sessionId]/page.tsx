@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams, useParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { 
@@ -244,9 +245,9 @@ function ReportDetails() {
         {/* Certificate Scorecard Header Card */}
         <div className="text-center md:text-left flex flex-col md:flex-row md:items-center justify-between gap-6 pb-6 border-b border-slate-800/80 print:border-slate-200">
           <div className="flex flex-col md:flex-row items-center md:items-start gap-4">
-            <div className="w-12 h-12 rounded-xl border border-agy-cyan/20 bg-bg-panel flex items-center justify-center overflow-hidden shrink-0 shadow-[0_0_15px_rgba(0,240,255,0.2)] print:border-slate-300">
-              <img src="/assets/yeetcode_logo.png" className="w-full h-full object-cover" alt="YeetCode Logo" />
-            </div>
+            <Link href="/" aria-label="AntiCode home" className="w-12 h-12 rounded-xl border border-agy-cyan/20 bg-bg-panel flex items-center justify-center overflow-hidden shrink-0 shadow-[0_0_15px_rgba(0,240,255,0.2)] print:border-slate-300 transition-transform hover:scale-105">
+              <img src="/assets/anticode_logo.svg" className="w-full h-full object-cover" alt="AntiCode Logo" />
+            </Link>
             <div>
               <span className="font-mono text-xs text-agy-green block uppercase tracking-widest font-semibold print:text-slate-500">
                 COMPLETION CERTIFICATE & REPORT
@@ -262,6 +263,7 @@ function ReportDetails() {
 
           <div className="flex justify-center gap-3 print-hidden">
             <button 
+              type="button"
               onClick={() => window.print()}
               className="px-4 py-2 border border-slate-800 hover:border-slate-700 bg-bg-panel/40 rounded-xl font-mono text-xs flex items-center gap-2 text-text-muted hover:text-white transition-all cursor-pointer"
             >
@@ -269,6 +271,7 @@ function ReportDetails() {
               <span>PRINT REPORT</span>
             </button>
             <button 
+              type="button"
               onClick={() => {
                 if (navigator.clipboard) {
                   navigator.clipboard.writeText(window.location.href);
@@ -375,7 +378,8 @@ function ReportDetails() {
               {/* Active candidate skill distribution polygon (glowing filled dynamic theme triangle) */}
               <polygon
                 points={radarPolygonPoints}
-                className={`fill-url(#radarGlow) hover:stroke-white transition-colors duration-300 ${theme.stroke}`}
+                fill="url(#radarGlow)"
+                className={`hover:stroke-white transition-colors duration-300 ${theme.stroke}`}
                 strokeWidth="2.5"
               />
 
@@ -432,6 +436,7 @@ function ReportDetails() {
         {/* Navigation Return */}
         <div className="text-center pt-6 print-hidden">
           <button
+            type="button"
             onClick={() => router.push("/problems")}
             className="group font-mono text-xs text-text-muted hover:text-white transition-colors cursor-pointer flex items-center gap-1.5 mx-auto"
           >

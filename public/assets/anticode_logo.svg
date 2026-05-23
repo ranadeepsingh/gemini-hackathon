@@ -1,0 +1,23 @@
+<svg width="256" height="256" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">AntiCode Logo</title>
+  <desc id="desc">A neon triangular code mark for the AntiCode platform.</desc>
+  <rect width="256" height="256" rx="48" fill="#030508"/>
+  <path d="M45 205L128 35L211 205H176L160.5 171H95.5L80 205H45Z" fill="url(#paint0_linear)"/>
+  <path d="M108 143L128 100L148 143H108Z" fill="#030508"/>
+  <path d="M73 92L36 128L73 164" stroke="#00F0FF" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M183 92L220 128L183 164" stroke="#00FF66" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M104 215H152" stroke="#8B5CF6" stroke-width="12" stroke-linecap="round"/>
+  <rect x="16" y="16" width="224" height="224" rx="40" stroke="url(#paint1_linear)" stroke-width="4"/>
+  <defs>
+    <linearGradient id="paint0_linear" x1="61" y1="205" x2="190" y2="48" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#00F0FF"/>
+      <stop offset="0.52" stop-color="#00FF66"/>
+      <stop offset="1" stop-color="#8B5CF6"/>
+    </linearGradient>
+    <linearGradient id="paint1_linear" x1="31" y1="30" x2="226" y2="225" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#00F0FF" stop-opacity="0.8"/>
+      <stop offset="0.5" stop-color="#00FF66" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#8B5CF6" stop-opacity="0.8"/>
+    </linearGradient>
+  </defs>
+</svg>

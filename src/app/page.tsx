@@ -14,6 +14,7 @@ import {
   CheckCircle, 
   Sparkles
 } from "lucide-react";
+import MouseSpotlight from "@/components/MouseSpotlight";
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<"agentic" | "skill" | "prompt">("agentic");
@@ -42,6 +43,7 @@ export default function Home() {
 
   return (
     <div className="relative min-h-screen bg-bg-dark text-text-main overflow-hidden scanline grid-overlay">
+      <MouseSpotlight />
       
       {/* Decorative moving laser scan line */}
       <div className="absolute top-0 left-0 w-full h-[2px] bg-agy-cyan opacity-40 shadow-[0_0_10px_#00f0ff] moving-scan z-10 pointer-events-none" />
@@ -49,14 +51,14 @@ export default function Home() {
       {/* Header */}
       <header className="sticky top-0 w-full z-40 bg-bg-dark/80 backdrop-blur-md border-b border-border-subtle">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+          <Link href="/" aria-label="AntiCode home" className="flex items-center gap-3 rounded-md transition-opacity hover:opacity-90">
             <div className="relative flex items-center justify-center w-9 h-9 rounded-lg bg-bg-panel border border-agy-cyan/20 overflow-hidden shadow-[0_0_10px_rgba(0,240,255,0.15)]">
-              <img src="/assets/yeetcode_logo.png" className="w-full h-full object-cover" alt="YeetCode Logo" />
+              <img src="/assets/anticode_logo.svg" className="w-full h-full object-cover" alt="AntiCode Logo" />
             </div>
             <span className="font-mono text-xl font-extrabold tracking-widest text-text-main">
-              YEET<span className="text-agy-green glow-text-green">CODE</span>
+              ANTI<span className="text-agy-green glow-text-green">CODE</span>
             </span>
-          </div>
+          </Link>
           <div className="flex items-center gap-4">
             <span className="hidden sm:flex items-center gap-2 text-xs font-mono text-text-muted bg-bg-panel/60 px-3 py-1.5 rounded-full border border-border-subtle">
               <span className="w-2 h-2 rounded-full bg-agy-green animate-ping" />
@@ -98,7 +100,7 @@ export default function Home() {
             </h1>
 
             <p className="text-text-muted text-lg leading-relaxed max-w-xl">
-              YeetCode is the futuristic platform built on GCP Compute Engine to test human-agent pair programming. Provision full sandboxed developer environments, track reasoning token telemetry, and run Gemini 3.5 multi-agent evaluations instantly.
+              AntiCode is the futuristic platform built on GCP Compute Engine to test human-agent pair programming. Provision full sandboxed developer environments, track reasoning token telemetry, and run Gemini 3.5 multi-agent evaluations instantly.
             </p>
 
             <div className="flex flex-wrap gap-4 pt-4">
@@ -147,12 +149,16 @@ export default function Home() {
             {/* Sliding Toggle Selector */}
             <div className="flex justify-end gap-2 mb-4 font-mono text-[10px] bg-bg-panel/40 p-1 rounded-lg border border-border-subtle w-fit ml-auto shadow-[0_0_15px_rgba(0,0,0,0.4)]">
               <button
+                type="button"
+                aria-pressed={heroView === "simulation"}
                 onClick={() => setHeroView("simulation")}
                 className={`px-3 py-1.5 rounded-md transition-all font-bold cursor-pointer ${heroView === "simulation" ? "bg-agy-cyan text-bg-dark font-extrabold shadow-[0_0_10px_rgba(0,240,255,0.3)]" : "text-text-muted hover:text-white"}`}
               >
                 LIVE SIMULATION
               </button>
               <button
+                type="button"
+                aria-pressed={heroView === "cockpit"}
                 onClick={() => setHeroView("cockpit")}
                 className={`px-3 py-1.5 rounded-md transition-all font-bold cursor-pointer ${heroView === "cockpit" ? "bg-agy-cyan text-bg-dark font-extrabold shadow-[0_0_10px_rgba(0,240,255,0.3)]" : "text-text-muted hover:text-white"}`}
               >
@@ -294,18 +300,24 @@ export default function Home() {
           {/* Selector Tabs */}
           <div className="flex justify-center border-b border-border-subtle mb-8 max-w-2xl mx-auto">
             <button 
+              type="button"
+              aria-pressed={activeTab === "agentic"}
               onClick={() => setActiveTab("agentic")}
               className={`flex-1 pb-4 text-sm font-mono font-bold tracking-wider uppercase border-b-2 transition-all ${activeTab === "agentic" ? "border-agy-cyan text-agy-cyan glow-text-cyan" : "border-transparent text-text-muted hover:text-text-main"}`}
             >
               Agentic Engineering
             </button>
             <button 
+              type="button"
+              aria-pressed={activeTab === "skill"}
               onClick={() => setActiveTab("skill")}
               className={`flex-1 pb-4 text-sm font-mono font-bold tracking-wider uppercase border-b-2 transition-all ${activeTab === "skill" ? "border-agy-green text-agy-green glow-text-green" : "border-transparent text-text-muted hover:text-text-main"}`}
             >
               Skill Architecting
             </button>
             <button 
+              type="button"
+              aria-pressed={activeTab === "prompt"}
               onClick={() => setActiveTab("prompt")}
               className={`flex-1 pb-4 text-sm font-mono font-bold tracking-wider uppercase border-b-2 transition-all ${activeTab === "prompt" ? "border-agy-violet text-agy-violet" : "border-transparent text-text-muted hover:text-text-main"}`}
             >
@@ -446,7 +458,7 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-2.5">
             <span className="font-mono text-sm tracking-widest text-text-muted">
-              YEET<span className="text-text-main">CODE</span> SYSTEM
+              ANTI<span className="text-text-main">CODE</span> SYSTEM
             </span>
           </div>
           <span className="text-xs text-text-muted font-mono">

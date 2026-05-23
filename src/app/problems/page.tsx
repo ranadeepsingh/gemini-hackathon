@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -290,7 +291,7 @@ const LOCAL_FALLBACK_PROBLEMS: Problem[] = [
 ];
 
 function generateGceInstanceName(slug: string): string {
-  return `yeetcode-sandbox-${slug}-${Math.floor(Math.random() * 10000)}`;
+  return `anticode-sandbox-${slug}-${Math.floor(Math.random() * 10000)}`;
 }
 
 export default function ProblemsPage() {
@@ -333,7 +334,7 @@ export default function ProblemsPage() {
             if (demoRole) {
               setUser({
                 id: "demo-user-id",
-                email: `${demoRole.toLowerCase()}@yeetcode.demo`
+                email: `${demoRole.toLowerCase()}@anticode.demo`
               });
               setProfile({
                 full_name: `Demo ${demoRole.charAt(0).toUpperCase() + demoRole.slice(1)}`,
@@ -478,15 +479,15 @@ export default function ProblemsPage() {
       {/* Futuristic Navbar */}
       <header className="sticky top-0 z-50 border-b border-slate-800/80 bg-bg-dark/85 backdrop-blur-xl">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+          <Link href="/" aria-label="AntiCode home" className="flex items-center gap-3 rounded-md transition-opacity hover:opacity-90">
             <div className="relative flex items-center justify-center w-9 h-9 rounded-lg bg-bg-panel border border-agy-cyan/20 overflow-hidden shadow-[0_0_10px_rgba(0,240,255,0.15)]">
-              <img src="/assets/yeetcode_logo.png" className="w-full h-full object-cover" alt="YeetCode Logo" />
+              <img src="/assets/anticode_logo.svg" className="w-full h-full object-cover" alt="AntiCode Logo" />
             </div>
             <div>
-              <span className="font-extrabold tracking-wider text-sm block">YEETCODE</span>
+              <span className="font-extrabold tracking-wider text-sm block">ANTICODE</span>
               <span className="text-[9px] font-mono text-agy-green block uppercase tracking-widest -mt-0.5">ADMIN PORTAL</span>
             </div>
-          </div>
+          </Link>
 
           <div className="flex items-center gap-6">
             <div className="flex items-center gap-1.5 font-mono text-xs text-text-muted bg-bg-panel/40 border border-slate-800/50 px-3 py-1.5 rounded-full">
@@ -515,7 +516,7 @@ export default function ProblemsPage() {
               </div>
             ) : (
               <div className="flex items-center gap-3 border-l border-slate-800/80 pl-6 h-8">
-                <div className="w-8 h-8 rounded-full bg-slate-800/60 border border-slate-750 flex items-center justify-center text-[9px] font-mono text-text-muted font-bold">
+                <div className="w-8 h-8 rounded-full bg-slate-800/60 border border-slate-700 flex items-center justify-center text-[9px] font-mono text-text-muted font-bold">
                   GS
                 </div>
                 <div className="text-left font-mono hidden md:block">
@@ -526,6 +527,7 @@ export default function ProblemsPage() {
             )}
 
             <button
+              type="button"
               onClick={handleLogout}
               className="flex items-center gap-1.5 font-mono text-xs text-text-muted hover:text-text-red transition-colors cursor-pointer border-l border-slate-800/80 pl-6 h-8"
             >
@@ -571,6 +573,7 @@ export default function ProblemsPage() {
               </div>
               <input
                 type="text"
+                aria-label="Search target matrices"
                 placeholder="Search target matrices..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -582,6 +585,7 @@ export default function ProblemsPage() {
             <div className="md:col-span-3 relative">
               <select
                 value={selectedCategory}
+                aria-label="Filter by challenge domain"
                 onChange={(e) => setSelectedCategory(e.target.value)}
                 className="w-full px-3 py-2 bg-bg-dark border border-slate-800/80 focus:border-agy-green/40 rounded-lg text-xs font-mono outline-none transition-all appearance-none cursor-pointer text-text-main"
               >
@@ -596,6 +600,7 @@ export default function ProblemsPage() {
             <div className="md:col-span-3">
               <select
                 value={selectedDifficulty}
+                aria-label="Filter by challenge difficulty"
                 onChange={(e) => setSelectedDifficulty(e.target.value)}
                 className="w-full px-3 py-2 bg-bg-dark border border-slate-800/80 focus:border-agy-green/40 rounded-lg text-xs font-mono outline-none transition-all appearance-none cursor-pointer text-text-main"
               >
@@ -622,14 +627,16 @@ export default function ProblemsPage() {
             ) : (
               <AnimatePresence mode="wait">
                 {filteredProblems.map((prob) => (
-                  <motion.div
+                  <motion.button
+                    type="button"
                     key={prob.id}
                     layout
                     initial={{ opacity: 0, y: 12 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -12 }}
                     whileHover={{ y: -4, scale: 1.015, transition: { duration: 0.2, ease: "easeOut" } }}
-                    className={`relative group p-6 rounded-xl border bg-bg-panel/50 hover:bg-bg-panel/85 transition-all duration-300 shadow-[10px_10px_30px_rgba(0,0,0,0.3)] overflow-hidden cursor-pointer ${
+                    aria-label={`Start challenge: ${prob.title}`}
+                    className={`relative group p-6 rounded-xl border bg-bg-panel/50 hover:bg-bg-panel/85 transition-all duration-300 shadow-[10px_10px_30px_rgba(0,0,0,0.3)] overflow-hidden cursor-pointer text-left w-full ${
                       prob.difficulty === "easy" ? "border-slate-800/80 hover:border-agy-green/35 hover:shadow-[0_0_25px_rgba(0,255,102,0.06)]" :
                       prob.difficulty === "medium" ? "border-slate-800/80 hover:border-agy-cyan/35 hover:shadow-[0_0_25px_rgba(0,240,255,0.06)]" :
                       "border-slate-800/80 hover:border-agy-violet/35 hover:shadow-[0_0_25px_rgba(139,92,246,0.06)]"
@@ -695,7 +702,7 @@ export default function ProblemsPage() {
                         </div>
                       </div>
                     </div>
-                  </motion.div>
+                  </motion.button>
                 ))}
               </AnimatePresence>
             )}
@@ -796,6 +803,7 @@ export default function ProblemsPage() {
                     <span className="text-xs font-mono text-text-green font-bold uppercase tracking-wider">STRUCTURE VERIFIED</span>
                     <span className="text-[10px] font-mono text-text-muted max-w-[200px] leading-relaxed">{uploadMessage}</span>
                     <button
+                      type="button"
                       onClick={() => setUploadStatus("idle")}
                       className="mt-2 text-[9px] font-mono border border-slate-800 hover:border-slate-700 hover:bg-bg-panel px-3 py-1 rounded cursor-pointer transition-all hover:text-white"
                     >
@@ -820,8 +828,9 @@ export default function ProblemsPage() {
                     <span className="text-xs font-mono text-text-red font-bold uppercase tracking-wider">COMPILE REJECTED</span>
                     <span className="text-[10px] font-mono text-text-muted max-w-[200px] leading-relaxed">{uploadMessage}</span>
                     <button
+                      type="button"
                       onClick={() => setUploadStatus("idle")}
-                      className="mt-2 text-[9px] font-mono border border-slate-800 hover:border-slate-750 hover:bg-bg-panel px-3 py-1 rounded cursor-pointer transition-all hover:text-white"
+                      className="mt-2 text-[9px] font-mono border border-slate-800 hover:border-slate-700 hover:bg-bg-panel px-3 py-1 rounded cursor-pointer transition-all hover:text-white"
                     >
                       RETRY UPLOAD
                     </button>
