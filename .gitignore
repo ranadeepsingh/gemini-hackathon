@@ -76,3 +76,4 @@ supabase/migrations/.temp/
 # Tooling and platform config
 .antigravitycli/
 .gemini/
+.vercel
