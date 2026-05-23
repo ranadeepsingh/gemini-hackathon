@@ -5,11 +5,11 @@ import fs from "fs";
 import { supabase } from "@/lib/supabase/client";
 import { refreshOutdatedStarterFiles } from "@/lib/workspace/starter-repairs";
 
-const SANDBOX_ROOT = path.resolve(process.cwd(), "candidate_workspace");
-const TEMPLATES_ROOT = path.resolve(process.cwd(), "candidate_workspace_templates");
-const BIN_ROOT = path.resolve(process.cwd(), "bin");
-const HIDDEN_TESTS_ROOT = path.resolve(process.cwd(), "candidate_workspace_hidden_tests");
-const SDK_RUNNER = path.resolve(process.cwd(), "scripts/antigravity_sdk_runner.py");
+const SANDBOX_ROOT = path.join(/*turbopackIgnore: true*/ process.cwd(), "candidate_workspace");
+const TEMPLATES_ROOT = path.join(/*turbopackIgnore: true*/ process.cwd(), "candidate_workspace_templates");
+const BIN_ROOT = path.join(/*turbopackIgnore: true*/ process.cwd(), "bin");
+const HIDDEN_TESTS_ROOT = path.join(/*turbopackIgnore: true*/ process.cwd(), "candidate_workspace_hidden_tests");
+const SDK_RUNNER = path.join(/*turbopackIgnore: true*/ process.cwd(), "scripts/antigravity_sdk_runner.py");
 const SDK_PYTHON_BIN = process.env.ANTIGRAVITY_SDK_PYTHON || process.env.PYTHON_BIN || "python3";
 const MAX_OUTPUT_BYTES = 120_000;
 const COMMAND_TIMEOUT_MS = 120_000;
@@ -196,6 +196,7 @@ function buildExecutionEnv(tokens: string[], sandboxDir: string, problemSlug: st
   const customPath = `${BIN_ROOT}${path.delimiter}${systemPath}`;
   const executable = path.basename(tokens[0]);
   const isAntigravity = executable === "antigravity";
+  const subcommand = tokens[1] || "help";
   const hiddenRunner = path.join(HIDDEN_TESTS_ROOT, problemSlug, "run_tests.py");
 
   const execEnv: NodeJS.ProcessEnv = {
@@ -211,11 +212,20 @@ function buildExecutionEnv(tokens: string[], sandboxDir: string, problemSlug: st
   if (isAntigravity && fs.existsSync(hiddenRunner)) {
     execEnv.AGY_TEST_RUNNER = hiddenRunner;
   }
+  if (isAntigravity && subcommand === "test") {
+    if (process.env.ANTICODE_ENABLE_LIVE_LLM_TESTS === "1") {
+      execEnv.ANTICODE_LIVE_LLM_TEST_BUDGET = "1";
+    } else {
+      execEnv.ANTICODE_DISABLE_LIVE_LLM_TESTS = "1";
+    }
+  }
 
-  // Inject API keys for ALL runs to enable direct run_tests.py executions to query Gemini APIs
-  if (process.env.GEMINI_API_KEY) execEnv.GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-  if (process.env.AGY_SDK_MODEL) execEnv.AGY_SDK_MODEL = process.env.AGY_SDK_MODEL;
-  if (process.env.GEMINI_CASE_MODEL) execEnv.GEMINI_CASE_MODEL = process.env.GEMINI_CASE_MODEL;
+  const canUseSensitiveRuntime = isAntigravity && ["prompt", "ask", "run", "test", "status", "ci"].includes(subcommand);
+  if (canUseSensitiveRuntime) {
+    if (process.env.GEMINI_API_KEY) execEnv.GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+    if (process.env.AGY_SDK_MODEL) execEnv.AGY_SDK_MODEL = process.env.AGY_SDK_MODEL;
+    if (process.env.GEMINI_CASE_MODEL) execEnv.GEMINI_CASE_MODEL = process.env.GEMINI_CASE_MODEL;
+  }
 
   return execEnv;
 }
@@ -339,7 +349,7 @@ export async function POST(req: NextRequest) {
       }
 
       // Security Check: enforce sandbox boundaries
-      if (!targetDir.startsWith(baseSandboxDir)) {
+      if (!isPathInside(baseSandboxDir, targetDir)) {
         return NextResponse.json({
           stdout: "",
           stderr: "cd: Permission denied (cannot escape sandbox bounds)",
@@ -373,7 +383,7 @@ export async function POST(req: NextRequest) {
     let sandboxDir = baseSandboxDir;
     if (clientCwd) {
       const resolvedDir = path.resolve(baseSandboxDir, clientCwd);
-      if (resolvedDir.startsWith(baseSandboxDir) && fs.existsSync(resolvedDir)) {
+      if (isPathInside(baseSandboxDir, resolvedDir) && fs.existsSync(resolvedDir)) {
         sandboxDir = resolvedDir;
       }
     }

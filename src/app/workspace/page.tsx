@@ -522,6 +522,13 @@ function WorkspaceCockpit() {
   const [code, setCode] = useState<string>("");
   const activeTabRef = useRef("");
 
+  // Problem Category State (default mapping based on slug pattern, updated dynamically from db)
+  const [problemCategory, setProblemCategory] = useState<"agentic_flow" | "skill_verification" | "prompt_engineering">(() => {
+    if (problemSlug.startsWith("skill-")) return "skill_verification";
+    if (problemSlug.startsWith("prompt-")) return "prompt_engineering";
+    return "agentic_flow";
+  });
+
   const [terminalLogs, setTerminalLogs] = useState<string[]>([]);
   const [terminalInput, setTerminalInput] = useState("");
   const [terminalCwd, setTerminalCwd] = useState<string>("");
@@ -841,13 +848,16 @@ function WorkspaceCockpit() {
         const { data: problemData } = await withClientTimeout(
           supabase
             .from("problems")
-            .select("id")
+            .select("id, category")
             .eq("slug", problemSlug)
             .single(),
           "Supabase problem rubric lookup"
         );
 
         if (problemData) {
+          if (problemData.category) {
+            setProblemCategory(problemData.category as "agentic_flow" | "skill_verification" | "prompt_engineering");
+          }
           const { data: rubricsData } = await withClientTimeout(
             supabase
               .from("challenge_rubrics")
@@ -1449,6 +1459,8 @@ function WorkspaceCockpit() {
     }
   };
 
+  const isSkillOrPrompt = problemCategory === "skill_verification" || problemCategory === "prompt_engineering";
+
   return (
     <div className={`min-h-screen bg-bg-dark text-white flex flex-col h-screen overflow-hidden ${activeDrag ? "select-none cursor-" + (activeDrag === "editorTerminal" ? "row-resize" : "col-resize") : ""}`}>
       {/* Laser Top Overlay scanlines */}
@@ -1518,8 +1530,11 @@ function WorkspaceCockpit() {
         {/* Left Side: IDE & Terminal (60% width) */}
         <div ref={leftPanelRef} style={{ width: isDesktop ? `${leftWidth}%` : undefined }} className="w-full h-[55%] lg:h-full border-b lg:border-b-0 flex flex-col overflow-hidden">
 
-          {/* Active Physical IDE (Top Panel 35% height) */}
-          <div style={{ height: `${editorHeight}%` }} className="flex flex-col bg-bg-dark/40 overflow-hidden shrink-0">
+          {/* Active Physical IDE */}
+          <div
+            style={isSkillOrPrompt ? { height: "100%" } : { height: `${editorHeight}%` }}
+            className={`flex flex-col bg-bg-dark/40 overflow-hidden ${isSkillOrPrompt ? "flex-1 h-full" : "shrink-0"}`}
+          >
             {/* File explorer tabs */}
             <div className="h-9 border-b border-slate-800/80 bg-bg-panel/40 flex items-center gap-2 px-3 sm:px-4 text-xs font-mono text-text-muted shrink-0 overflow-x-auto overflow-y-hidden">
               <div className="hidden sm:flex items-center gap-1 shrink-0">
@@ -1657,82 +1672,86 @@ function WorkspaceCockpit() {
             </div>
           </div>
 
-          {/* Drag-to-resize handle for Editor/Terminal splits */}
-          <div
-            onPointerDown={handleEditorTerminalResize}
-            className="h-[3px] bg-slate-800 hover:bg-agy-green/80 cursor-row-resize transition-colors relative z-40 group select-none shrink-0 flex items-center justify-center"
-            title="Drag to resize editor & terminal"
-          >
-            <div className="absolute inset-x-0 -top-[6px] -bottom-[6px] bg-transparent group-hover:bg-agy-green/5 blur-sm pointer-events-none" />
-            <div className="h-[1px] w-6 bg-slate-700 group-hover:bg-agy-green/50" />
-          </div>
+          {!isSkillOrPrompt && (
+            <>
+              {/* Drag-to-resize handle for Editor/Terminal splits */}
+              <div
+                onPointerDown={handleEditorTerminalResize}
+                className="h-[3px] bg-slate-800 hover:bg-agy-green/80 cursor-row-resize transition-colors relative z-40 group select-none shrink-0 flex items-center justify-center"
+                title="Drag to resize editor & terminal"
+              >
+                <div className="absolute inset-x-0 -top-[6px] -bottom-[6px] bg-transparent group-hover:bg-agy-green/5 blur-sm pointer-events-none" />
+                <div className="h-[1px] w-6 bg-slate-700 group-hover:bg-agy-green/50" />
+              </div>
 
-          {/* Physically Working Terminal CLI Console (Bottom Panel 65% height) */}
-          <div className="flex flex-col bg-bg-dark overflow-hidden flex-1 min-h-0">
-            <div className="h-8 border-b border-slate-800/80 bg-bg-panel/30 flex items-center px-4 justify-between font-mono text-[10px] text-text-muted shrink-0">
-              <span className="flex items-center gap-1.5">
-                <TerminalIcon className="w-3.5 h-3.5 text-agy-cyan animate-pulse" />
-                VIRTUAL TERMINAL CLI (Isolated Environment){terminalCwd ? ` - /${terminalCwd}` : " - /"}
-              </span>
-              <span className="text-agy-green">ONLINE: UTC-8</span>
-            </div>
+              {/* Physically Working Terminal CLI Console (Bottom Panel 65% height) */}
+              <div className="flex flex-col bg-bg-dark overflow-hidden flex-1 min-h-0">
+                <div className="h-8 border-b border-slate-800/80 bg-bg-panel/30 flex items-center px-4 justify-between font-mono text-[10px] text-text-muted shrink-0">
+                  <span className="flex items-center gap-1.5">
+                    <TerminalIcon className="w-3.5 h-3.5 text-agy-cyan animate-pulse" />
+                    VIRTUAL TERMINAL CLI (Isolated Environment){terminalCwd ? ` - /${terminalCwd}` : " - /"}
+                  </span>
+                  <span className="text-agy-green">ONLINE: UTC-8</span>
+                </div>
 
-            {/* Logs Area */}
-            <div
-              ref={terminalViewportRef}
-              onScroll={handleTerminalViewportScroll}
-              className="flex-1 overflow-auto scroll-smooth p-4 font-mono text-[11px] leading-relaxed space-y-1.5 select-text"
-            >
-              {terminalLogs.map((log, i) => {
-                const isUserPrompt = log.includes("agy 🧠") && log.includes(">>");
-                const isAgentCall = log.includes("[antigravity sdk]") || log.includes("antigravity agent calling") || log.includes("[antigravity agent]");
-                const isAgentThought = log.includes("[THINKING]") || log.includes("antigravity agent:");
-                const isPassed = log.includes("PASSED") || log.includes("SUCCESS");
-                const isSystemError = log.includes("ERROR") || log.includes("Error") || log.includes("WARNING");
+                {/* Logs Area */}
+                <div
+                  ref={terminalViewportRef}
+                  onScroll={handleTerminalViewportScroll}
+                  className="flex-1 overflow-auto scroll-smooth p-4 font-mono text-[11px] leading-relaxed space-y-1.5 select-text"
+                >
+                  {terminalLogs.map((log, i) => {
+                    const isUserPrompt = log.includes("agy 🧠") && log.includes(">>");
+                    const isAgentCall = log.includes("[antigravity sdk]") || log.includes("antigravity agent calling") || log.includes("[antigravity agent]");
+                    const isAgentThought = log.includes("[THINKING]") || log.includes("antigravity agent:");
+                    const isPassed = log.includes("PASSED") || log.includes("SUCCESS");
+                    const isSystemError = log.includes("ERROR") || log.includes("Error") || log.includes("WARNING");
 
-                let logClass = "text-text-muted";
-                if (isUserPrompt) logClass = "text-agy-cyan font-semibold";
-                else if (isAgentCall) logClass = "text-agy-violet";
-                else if (isAgentThought) logClass = "text-agy-green";
-                else if (isPassed) logClass = "text-text-green font-bold";
-                else if (isSystemError) logClass = "text-text-red font-semibold";
+                    let logClass = "text-text-muted";
+                    if (isUserPrompt) logClass = "text-agy-cyan font-semibold";
+                    else if (isAgentCall) logClass = "text-agy-violet";
+                    else if (isAgentThought) logClass = "text-agy-green";
+                    else if (isPassed) logClass = "text-text-green font-bold";
+                    else if (isSystemError) logClass = "text-text-red font-semibold";
 
-                return (
-                  <div key={i} className={logClass}>
-                    {isUserPrompt ? (
-                      (() => {
-                        const parts = log.split(">>");
-                        const promptPrefix = parts[0] + ">>";
-                        const promptText = parts.slice(1).join(">>");
-                        return (
-                          <>
-                            <span className="text-agy-cyan font-semibold mr-1.5">{promptPrefix}</span>
-                            <span className="text-white font-semibold">{promptText}</span>
-                          </>
-                        );
-                      })()
-                    ) : log}
-                  </div>
-                );
-              })}
-              <div ref={terminalEndRef} />
-            </div>
+                    return (
+                      <div key={i} className={logClass}>
+                        {isUserPrompt ? (
+                          (() => {
+                            const parts = log.split(">>");
+                            const promptPrefix = parts[0] + ">>";
+                            const promptText = parts.slice(1).join(">>");
+                            return (
+                              <>
+                                <span className="text-agy-cyan font-semibold mr-1.5">{promptPrefix}</span>
+                                <span className="text-white font-semibold">{promptText}</span>
+                              </>
+                            );
+                          })()
+                        ) : log}
+                      </div>
+                    );
+                  })}
+                  <div ref={terminalEndRef} />
+                </div>
 
-            {/* Command form field */}
-            <form onSubmit={handleTerminalSubmit} className="h-10 border-t border-slate-800/80 bg-bg-panel/20 flex items-center px-4 font-mono text-xs">
-              <span className="text-agy-cyan font-semibold mr-2 shrink-0">agy 🧠 {terminalCwd ? `(/${terminalCwd})` : "(/)"} &gt;&gt;</span>
-              <input
-                type="text"
-                aria-label="Terminal command"
-                value={terminalInput}
-                onChange={(e) => setTerminalInput(e.target.value)}
-                onKeyDown={handleTerminalKeyDown}
-                disabled={isRunning || isEvaluating}
-                placeholder="Ask or prompt the agent directly..."
-                className="flex-1 bg-transparent text-white outline-none border-none caret-agy-cyan focus:ring-0"
-              />
-            </form>
-          </div>
+                {/* Command form field */}
+                <form onSubmit={handleTerminalSubmit} className="h-10 border-t border-slate-800/80 bg-bg-panel/20 flex items-center px-4 font-mono text-xs">
+                  <span className="text-agy-cyan font-semibold mr-2 shrink-0">agy 🧠 {terminalCwd ? `(/${terminalCwd})` : "(/)"} &gt;&gt;</span>
+                  <input
+                    type="text"
+                    aria-label="Terminal command"
+                    value={terminalInput}
+                    onChange={(e) => setTerminalInput(e.target.value)}
+                    onKeyDown={handleTerminalKeyDown}
+                    disabled={isRunning || isEvaluating}
+                    placeholder="Ask or prompt the agent directly..."
+                    className="flex-1 bg-transparent text-white outline-none border-none caret-agy-cyan focus:ring-0"
+                  />
+                </form>
+              </div>
+            </>
+          )}
 
         </div>
 

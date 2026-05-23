@@ -13,6 +13,7 @@ import asyncio
 import hashlib
 import os
 import pathlib
+import subprocess
 import sys
 import textwrap
 from importlib import metadata
@@ -157,7 +158,26 @@ def print_status(workspace: pathlib.Path, problem: str) -> int:
     safe_print(f"[antigravity sdk] problem={problem}")
     safe_print(f"[antigravity sdk] file tools={'ready' if available else 'unavailable'}")
     safe_print(f"[antigravity sdk] live gemini chat={'ready' if available and api_key_configured else 'unavailable'}")
-    return 0 if available and api_key_configured else 2
+    return 0
+
+
+def run_bundled_cli_fallback(workspace: pathlib.Path, mode: str, prompt: str, reason: str) -> int:
+    repo_root = pathlib.Path(__file__).resolve().parents[1]
+    bundled_cli = repo_root / "bin" / "antigravity"
+    if not bundled_cli.exists():
+        safe_print(f"[antigravity sdk] ERROR: SDK unavailable and bundled fallback is missing: {bundled_cli}")
+        return 2
+
+    safe_print(f"[antigravity sdk] {reason} Switching to bundled demo-safe Antigravity agent fallback.")
+    command = "run" if mode == "run" else mode
+    args = [sys.executable, str(bundled_cli), command]
+    if prompt.strip():
+        args.append(prompt.strip())
+
+    env = os.environ.copy()
+    env["ANTICODE_AGENT_FALLBACK_ACTIVE"] = "1"
+    completed = subprocess.run(args, cwd=workspace, env=env)
+    return completed.returncode
 
 
 def shorten(value: object) -> str:
@@ -169,12 +189,11 @@ def shorten(value: object) -> str:
 
 async def run_sdk_agent(workspace: pathlib.Path, problem: str, mode: str, prompt: str) -> int:
     if not validate_sdk_available():
-        return 2
+        return run_bundled_cli_fallback(workspace, mode, prompt, "Official SDK import failed.")
 
     api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key:
-        safe_print("[antigravity sdk] ERROR: GEMINI_API_KEY is not configured. No files were modified.")
-        return 2
+        return run_bundled_cli_fallback(workspace, mode, prompt, "GEMINI_API_KEY is not configured.")
 
     from google.antigravity import Agent, LocalAgentConfig, types
     from google.antigravity.hooks import policy
@@ -247,8 +266,7 @@ async def run_sdk_agent(workspace: pathlib.Path, problem: str, mode: str, prompt
             total_tokens = prompt_tokens + output_tokens + thoughts_tokens
             cost_usd = (prompt_tokens * 0.00000015) + (output_tokens * 0.00000060)
     except Exception as exc:
-        safe_print(f"[antigravity sdk] ERROR: {shorten(exc)}")
-        return 1
+        return run_bundled_cli_fallback(workspace, mode, prompt, f"Official SDK run failed: {shorten(exc)}.")
 
     after = snapshot_workspace(workspace)
     changed = describe_changes(before, after)

@@ -19,7 +19,7 @@ const CHALLENGE_DESCRIPTIONS: Record<string, { title: string; category: string; 
     title: "AI Skill Writing: Custom Log Parser Skill",
     category: "Skill Verification",
     difficulty: "Hard",
-    content: `### Goal\nReview a demo-ready Google Antigravity Skill (\`log_parser\`) that parses logs dynamically.\n\n### Starter State\n\`SKILL.md\` and \`parse.py\` are pre-seeded with Apache and JSON parsing so the demo can validate the run-tests path immediately.\n\n### Backstory\nAntigravity agents need the capability to analyze system event logs without leaving their agent sandbox. This skill accepts log lines, applies pattern heuristics, and outputs structured analytical breakdowns.\n\n### Task\n1. Inspect \`skills/log_parser/SKILL.md\` and \`skills/log_parser/scripts/parse.py\`.\n2. Use the agy terminal to verify standard Apache and JSON logs parse correctly.\n3. If you edit it, preserve malformed input and binary block safety fallbacks.\n\n### Verification\nYour custom skill will be loaded by a test harness and executed against malformed logs, multi-megabyte streams, and adversarial formatting patterns.`
+    content: `### Goal\nDesign and build a custom Google Antigravity Skill (\`log_parser\`) that parses logs dynamically.\n\n### Starter State\n\`SKILL.md\` contains the template documentation and specifications, while \`parse.py\` contains an empty stub. The tests will fail out-of-the-box until a proper implementation is supplied.\n\n### Backstory\nAntigravity agents need the capability to analyze system event logs without leaving their agent sandbox. This skill accepts log lines, applies pattern heuristics, and outputs structured analytical breakdowns.\n\n### Task\n1. Implement the log line parser in \`skills/log_parser/scripts/parse.py\` following the detailed specifications in \`skills/log_parser/SKILL.md\`.\n2. Ensure standard Apache Combined format and JSON logs are parsed correctly.\n3. Implement robust fallback behaviors for malformed lines and unrecognized formats.\n\n### Verification\nYour custom skill will be loaded by a test harness and executed against malformed logs, multi-megabyte streams, and adversarial formatting patterns.`
   },
   "prompt-adversarial-defense": {
     title: "Prompt Engineering: Adversarial Defense Sandbox",
@@ -110,6 +110,11 @@ This workspace is integrated with a **pre-activated Antigravity AI Agent**!
 
 function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+function isPathInside(parentDir: string, targetPath: string) {
+  const relative = path.relative(parentDir, targetPath);
+  return relative === "" || (!!relative && !relative.startsWith("..") && !path.isAbsolute(relative));
 }
 
 function readFilesRecursively(dir: string, baseDir: string = dir): Record<string, string> {
@@ -258,7 +263,7 @@ export async function POST(req: NextRequest) {
     const targetPath = path.resolve(sandboxDir, filename);
 
     // Security guard check
-    if (!targetPath.startsWith(sandboxDir)) {
+    if (!isPathInside(sandboxDir, targetPath)) {
       return NextResponse.json({ error: "Access Denied: Path escape check failed." }, { status: 403 });
     }
 
