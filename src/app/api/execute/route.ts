@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { spawn } from "child_process";
 import path from "path";
 import fs from "fs";
+import { supabase } from "@/lib/supabase/client";
 
 const SANDBOX_ROOT = path.resolve(process.cwd(), "candidate_workspace");
 const BIN_ROOT = path.resolve(process.cwd(), "bin");
@@ -69,6 +70,18 @@ function tokenizeCommand(command: string): string[] {
 }
 
 function normalizeCommand(tokens: string[]): string[] {
+  if (tokens.length === 0) return tokens;
+
+  // Direct alias support
+  if (tokens[0] === "agy" || tokens[0] === "gy") {
+    tokens[0] = "antigravity";
+  }
+
+  // Prepend antigravity if starting with direct shortcuts
+  if (["prompt", "ask", "test", "status", "run"].includes(tokens[0])) {
+    tokens.unshift("antigravity");
+  }
+
   if (tokens.length >= 2 && /^python(\d+(\.\d+)?)?$/.test(tokens[0]) && tokens[1] === "run_tests.py") {
     return ["antigravity", "test"];
   }
@@ -128,10 +141,9 @@ function buildExecutionEnv(tokens: string[], sandboxDir: string, problemSlug: st
     execEnv.AGY_TEST_RUNNER = hiddenRunner;
   }
 
-  if (isAntigravity && ["run", "prompt", "ask"].includes(subcommand)) {
-    if (process.env.GEMINI_API_KEY) execEnv.GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-    if (process.env.GEMINI_CASE_MODEL) execEnv.GEMINI_CASE_MODEL = process.env.GEMINI_CASE_MODEL;
-  }
+  // Inject API keys for ALL runs to enable direct run_tests.py executions to query Gemini APIs
+  if (process.env.GEMINI_API_KEY) execEnv.GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+  if (process.env.GEMINI_CASE_MODEL) execEnv.GEMINI_CASE_MODEL = process.env.GEMINI_CASE_MODEL;
 
   return execEnv;
 }
@@ -144,8 +156,20 @@ function sanitizeOutput(text: string, problemSlug: string): string {
     .replaceAll(HIDDEN_TESTS_ROOT, "[hidden-tests-root]");
 }
 
-function runCommand(tokens: string[], sandboxDir: string, execEnv: NodeJS.ProcessEnv, problemSlug: string) {
-  return new Promise<NextResponse>((resolve) => {
+interface CommandResult {
+  stdout: string;
+  stderr: string;
+  code: number;
+  success: boolean;
+}
+
+function runCommand(
+  tokens: string[],
+  sandboxDir: string,
+  execEnv: NodeJS.ProcessEnv,
+  problemSlug: string
+): Promise<CommandResult> {
+  return new Promise<CommandResult>((resolve) => {
     const child = spawn(tokens[0], tokens.slice(1), {
       cwd: sandboxDir,
       env: execEnv,
@@ -178,28 +202,24 @@ function runCommand(tokens: string[], sandboxDir: string, execEnv: NodeJS.Proces
     child.on("error", (error) => {
       completed = true;
       clearTimeout(timeout);
-      resolve(
-        NextResponse.json({
-          stdout: sanitizeOutput(stdout, problemSlug),
-          stderr: sanitizeOutput(`${stderr}${stderr ? "\n" : ""}${error.message}`, problemSlug),
-          code: 127,
-          success: false
-        })
-      );
+      resolve({
+        stdout: sanitizeOutput(stdout, problemSlug),
+        stderr: sanitizeOutput(`${stderr}${stderr ? "\n" : ""}${error.message}`, problemSlug),
+        code: 127,
+        success: false
+      });
     });
 
     child.on("close", (code) => {
       completed = true;
       clearTimeout(timeout);
       const exitCode = code ?? 1;
-      resolve(
-        NextResponse.json({
-          stdout: sanitizeOutput(stdout, problemSlug),
-          stderr: sanitizeOutput(stderr, problemSlug),
-          code: exitCode,
-          success: exitCode === 0
-        })
-      );
+      resolve({
+        stdout: sanitizeOutput(stdout, problemSlug),
+        stderr: sanitizeOutput(stderr, problemSlug),
+        code: exitCode,
+        success: exitCode === 0
+      });
     });
   });
 }
@@ -207,7 +227,7 @@ function runCommand(tokens: string[], sandboxDir: string, execEnv: NodeJS.Proces
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { problemSlug, command } = body;
+    const { problemSlug, command, sessionId } = body;
 
     if (!problemSlug || !command) {
       return NextResponse.json({ error: "Missing problemSlug or command" }, { status: 400 });
@@ -222,7 +242,62 @@ export async function POST(req: NextRequest) {
     validateCommand(tokens);
     const execEnv = buildExecutionEnv(tokens, sandboxDir, problemSlug);
 
-    return runCommand(tokens, sandboxDir, execEnv, problemSlug);
+    const result = await runCommand(tokens, sandboxDir, execEnv, problemSlug);
+
+    // If sessionId is present, parse metrics and update database
+    if (sessionId) {
+      try {
+        const metricsMatch = result.stdout.match(/\[METRICS\] prompt_tokens=(\d+) candidates_tokens=(\d+) total_tokens=(\d+) cost_usd=([\d\.]+)/);
+        
+        // Fetch current values
+        const { data: session } = await supabase
+          .from("interview_sessions")
+          .select("agent_deploy_count, test_run_count, total_llm_calls, total_input_tokens, total_output_tokens, cost_usd")
+          .eq("id", sessionId)
+          .single();
+
+        if (session) {
+          let agentDeployCount = session.agent_deploy_count || 0;
+          let testRunCount = session.test_run_count || 0;
+          let totalLlmCalls = session.total_llm_calls || 0;
+          let totalInputTokens = session.total_input_tokens || 0;
+          let totalOutputTokens = session.total_output_tokens || 0;
+          let costUsd = parseFloat(session.cost_usd || "0");
+
+          // Determine command type from normalized tokens
+          const subcommand = tokens[1] || "";
+          const isAntigravity = tokens[0] === "antigravity";
+          if (isAntigravity && ["run", "prompt", "ask"].includes(subcommand)) {
+            agentDeployCount += 1;
+          } else if (isAntigravity && subcommand === "test") {
+            testRunCount += 1;
+          }
+
+          if (metricsMatch) {
+            totalInputTokens += parseInt(metricsMatch[1]);
+            totalOutputTokens += parseInt(metricsMatch[2]);
+            totalLlmCalls += 1;
+            costUsd += parseFloat(metricsMatch[4]);
+          }
+
+          await supabase
+            .from("interview_sessions")
+            .update({
+              agent_deploy_count: agentDeployCount,
+              test_run_count: testRunCount,
+              total_llm_calls: totalLlmCalls,
+              total_input_tokens: totalInputTokens,
+              total_output_tokens: totalOutputTokens,
+              cost_usd: costUsd
+            })
+            .eq("id", sessionId);
+        }
+      } catch (dbErr) {
+        console.error("Telemetry database sync failed:", dbErr);
+      }
+    }
+
+    return NextResponse.json(result);
   } catch (err: unknown) {
     return NextResponse.json({ error: getErrorMessage(err) }, { status: 400 });
   }

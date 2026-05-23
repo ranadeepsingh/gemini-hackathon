@@ -65,7 +65,9 @@ function isAgentCliCommand(command: string): boolean {
   return command === "antigravity run" ||
     command.startsWith("antigravity run ") ||
     command.startsWith("antigravity prompt ") ||
-    command.startsWith("antigravity ask ");
+    command.startsWith("antigravity ask ") ||
+    command.startsWith("prompt ") ||
+    command.startsWith("ask ");
 }
 
 function getErrorMessage(error: unknown): string {
@@ -187,6 +189,166 @@ const GENERAL_DEFAULT_RUBRICS: WorkspaceRubric[] = [
   { metric_key: "collaboration_trace", metric_label: "Analytical Reasoning Trace", weight: 0.10, description: "Reviewing trace details, command descriptions, and communicative agility." }
 ];
 
+interface FileNode {
+  name: string;
+  path: string;
+  isDir: boolean;
+  children: Record<string, FileNode>;
+}
+
+function buildFileTree(filePaths: string[]): FileNode {
+  const root: FileNode = { name: "root", path: "", isDir: true, children: {} };
+  for (const filePath of filePaths) {
+    const parts = filePath.split("/");
+    let current = root;
+    let cumulativePath = "";
+    for (let i = 0; i < parts.length; i++) {
+      const part = parts[i];
+      cumulativePath = cumulativePath ? `${cumulativePath}/${part}` : part;
+      const isLast = i === parts.length - 1;
+      if (!current.children[part]) {
+        current.children[part] = {
+          name: part,
+          path: cumulativePath,
+          isDir: !isLast,
+          children: {}
+        };
+      }
+      current = current.children[part];
+    }
+  }
+  return root;
+}
+
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#x27;");
+}
+
+function highlightPython(code: string): string {
+  let escaped = escapeHtml(code);
+  const placeholders: string[] = [];
+  
+  const pushPlaceholder = (text: string, cls: string) => {
+    const idx = placeholders.length;
+    placeholders.push(`<span class="${cls}">${text}</span>`);
+    return `___PLACEHOLDER_${idx}___`;
+  };
+
+  // 1. Comments
+  escaped = escaped.replace(/(#.*)$/gm, (match) => {
+    return pushPlaceholder(match, "text-text-muted/60 italic");
+  });
+
+  // 2. Triple quoted strings
+  escaped = escaped.replace(/(&quot;&quot;&quot;[\s\S]*?&quot;&quot;&quot;)/g, (match) => {
+    return pushPlaceholder(match, "text-agy-green/80");
+  });
+  escaped = escaped.replace(/(&#x27;&#x27;&#x27;[\s\S]*?&#x27;&#x27;&#x27;)/g, (match) => {
+    return pushPlaceholder(match, "text-agy-green/80");
+  });
+
+  // 3. Regular strings
+  escaped = escaped.replace(/(&quot;.*?&quot;)/g, (match) => {
+    return pushPlaceholder(match, "text-agy-green/80");
+  });
+  escaped = escaped.replace(/(&#x27;.*?&#x27;)/g, (match) => {
+    return pushPlaceholder(match, "text-agy-green/80");
+  });
+
+  // 4. Keywords
+  const keywords = [
+    "def", "class", "import", "from", "as", "return", "if", "elif", "else", "try",
+    "except", "finally", "for", "while", "in", "is", "and", "or", "not", "assert",
+    "with", "yield", "pass", "break", "continue", "lambda", "global", "nonlocal", "del"
+  ];
+  const keywordRegex = new RegExp(`\\b(${keywords.join("|")})\\b`, "g");
+  escaped = escaped.replace(keywordRegex, '<span class="text-agy-cyan font-bold">$1</span>');
+
+  // 5. Types & Builtins
+  const builtins = ["self", "print", "len", "range", "list", "dict", "set", "tuple", "str", "int", "float", "bool", "Exception", "ValueError", "TypeError", "object", "super", "sum", "map"];
+  const builtinRegex = new RegExp(`\\b(${builtins.join("|")})\\b`, "g");
+  escaped = escaped.replace(builtinRegex, '<span class="text-agy-violet font-semibold">$1</span>');
+
+  // 6. Booleans and None
+  escaped = escaped.replace(/\b(True|False|None)\b/g, '<span class="text-agy-violet font-bold">$1</span>');
+
+  // 7. Function names in def
+  escaped = escaped.replace(/\bdef\s+(\w+)\b/g, 'def <span class="text-white font-semibold">$1</span>');
+
+  // 8. Numbers
+  escaped = escaped.replace(/\b(\d+)\b/g, '<span class="text-agy-green font-bold">$1</span>');
+
+  // 9. Decorators
+  escaped = escaped.replace(/(@\w+)/g, '<span class="text-agy-violet font-semibold">$1</span>');
+
+  // 10. Restore placeholders
+  for (let i = placeholders.length - 1; i >= 0; i--) {
+    escaped = escaped.replace(`___PLACEHOLDER_${i}___`, placeholders[i]);
+  }
+
+  return escaped;
+}
+
+function highlightMarkdown(code: string): string {
+  let escaped = escapeHtml(code);
+
+  // Headers
+  escaped = escaped.replace(/^(#{1,6}\s+.*)$/gm, '<span class="text-agy-cyan font-bold">$1</span>');
+
+  // Inline code
+  escaped = escaped.replace(/(`)(.*?)\1/g, '<span class="text-agy-green bg-bg-panel/40 px-1.5 py-0.5 rounded font-mono">$1$2$1</span>');
+
+  // Bold
+  escaped = escaped.replace(/(\*\*|__)(.*?)\1/g, '<span class="font-bold text-white">$1$2$1</span>');
+
+  // Italic
+  escaped = escaped.replace(/(\*|_)(.*?)\1/g, '<span class="italic text-text-muted">$1$2$1</span>');
+
+  // Blockquotes
+  escaped = escaped.replace(/^&gt;\s+(.*)$/gm, '<span class="text-text-muted/85 italic border-l-2 border-slate-700 pl-2">$1</span>');
+
+  // Lists
+  escaped = escaped.replace(/^(\s*[-*+]\s+)/gm, '<span class="text-agy-green font-bold">$1</span>');
+  escaped = escaped.replace(/^(\s*\d+\.\s+)/gm, '<span class="text-agy-green font-bold">$1</span>');
+
+  // Fenced blocks
+  escaped = escaped.replace(/(```[a-z]*[\s\S]*?```)/g, '<span class="text-agy-violet">$1</span>');
+
+  return escaped;
+}
+
+function highlightJson(code: string): string {
+  let escaped = escapeHtml(code);
+
+  // Keys
+  escaped = escaped.replace(/(&quot;.*?&quot;)\s*:/g, '<span class="text-agy-cyan font-semibold">$1</span>:');
+
+  // Values (strings)
+  escaped = escaped.replace(/:\s*(&quot;.*?&quot;)/g, ': <span class="text-agy-green">$1</span>');
+
+  // Booleans / nulls
+  escaped = escaped.replace(/\b(true|false|null)\b/g, '<span class="text-agy-violet font-semibold">$1</span>');
+
+  // Numbers
+  escaped = escaped.replace(/\b(\d+)\b/g, '<span class="text-agy-green font-bold">$1</span>');
+
+  return escaped;
+}
+
+function getHighlighter(content: string, filename: string): string {
+  if (!content) return "";
+  const ext = filename.split(".").pop() || "";
+  if (ext === "py") return highlightPython(content);
+  if (ext === "md") return highlightMarkdown(content);
+  if (ext === "json") return highlightJson(content);
+  return escapeHtml(content);
+}
+
 function WorkspaceCockpit() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -218,6 +380,98 @@ function WorkspaceCockpit() {
 
   const terminalEndRef = useRef<HTMLDivElement>(null);
   const thoughtsEndRef = useRef<HTMLDivElement>(null);
+
+  // Editor overlapping refs for scroll-synchronization
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const preRef = useRef<HTMLPreElement>(null);
+  const lineNumbersRef = useRef<HTMLDivElement>(null);
+
+  // Keep track of directory expansion state for the File Tree Sidebar
+  const [expandedDirs, setExpandedDirs] = useState<Record<string, boolean>>({});
+
+  const handleScroll = () => {
+    if (textareaRef.current) {
+      const scrollTop = textareaRef.current.scrollTop;
+      const scrollLeft = textareaRef.current.scrollLeft;
+      if (preRef.current) {
+        preRef.current.scrollTop = scrollTop;
+        preRef.current.scrollLeft = scrollLeft;
+      }
+      if (lineNumbersRef.current) {
+        lineNumbersRef.current.scrollTop = scrollTop;
+      }
+    }
+  };
+
+  // Keep editor scroll alignment when tabs change
+  useEffect(() => {
+    if (textareaRef.current) textareaRef.current.scrollTop = 0;
+    if (textareaRef.current) textareaRef.current.scrollLeft = 0;
+    if (preRef.current) preRef.current.scrollTop = 0;
+    if (preRef.current) preRef.current.scrollLeft = 0;
+    if (lineNumbersRef.current) lineNumbersRef.current.scrollTop = 0;
+  }, [activeTab]);
+
+  const renderFileTree = (node: FileNode, depth = 0) => {
+    // Sort directories first, then files
+    const sortedChildren = Object.values(node.children).sort((a, b) => {
+      if (a.isDir && !b.isDir) return -1;
+      if (!a.isDir && b.isDir) return 1;
+      return a.name.localeCompare(b.name);
+    });
+
+    return (
+      <div className="space-y-1">
+        {sortedChildren.map(child => {
+          const isSelected = activeTab === child.path;
+          const isDirExpanded = expandedDirs[child.path] !== false; // Expand by default
+
+          if (child.isDir) {
+            return (
+              <div key={child.path} className="space-y-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setExpandedDirs(prev => ({
+                      ...prev,
+                      [child.path]: prev[child.path] === false ? true : false
+                    }));
+                  }}
+                  className="w-full flex items-center gap-1.5 px-2 py-1 text-left font-mono text-[10px] text-text-muted hover:text-white hover:bg-slate-800/30 rounded transition-colors cursor-pointer"
+                  style={{ paddingLeft: `${(depth + 1) * 8}px` }}
+                >
+                  <Folder className="w-3.5 h-3.5 text-agy-cyan" />
+                  <span className="truncate font-semibold uppercase tracking-wider">{child.name}</span>
+                </button>
+                {isDirExpanded && (
+                  <div className="border-l border-slate-800/40 ml-[7px]">
+                    {renderFileTree(child, depth + 1)}
+                  </div>
+                )}
+              </div>
+            );
+          } else {
+            return (
+              <button
+                type="button"
+                key={child.path}
+                onClick={() => handleTabChange(child.path)}
+                className={`w-full flex items-center gap-1.5 px-2 py-1 text-left font-mono text-[10px] rounded transition-colors cursor-pointer ${
+                  isSelected
+                    ? "bg-agy-green/10 text-agy-green font-bold border-r-2 border-agy-green"
+                    : "text-text-muted/80 hover:text-white hover:bg-slate-800/20"
+                }`}
+                style={{ paddingLeft: `${(depth + 1) * 8}px` }}
+              >
+                <FileCode className={`w-3.5 h-3.5 ${isSelected ? "text-agy-green" : "text-text-muted/50"}`} />
+                <span className="truncate">{child.name}</span>
+              </button>
+            );
+          }
+        })}
+      </div>
+    );
+  };
 
   // Load authenticated user and their profile/role
   const [profile, setProfile] = useState<{ full_name?: string; role?: string } | null>(null);
@@ -368,7 +622,7 @@ function WorkspaceCockpit() {
         setTerminalLogs([
           `AntiCode Virtual Sandbox Environment initializing...`,
           `Establishing connection to GCE VM node: us-central-4a...`,
-          `interview@anticode-vm:~$ `
+          `agy 🧠 >> `
         ]);
 
         const res = await fetch(`/api/workspace?problemSlug=${problemSlug}`);
@@ -381,19 +635,34 @@ function WorkspaceCockpit() {
         setActiveFile(data.activeFile);
         setCode(data.files[data.activeFile] || "");
 
-        setTerminalLogs([
-          `AntiCode Virtual Sandbox Environment initialized.`,
-          `Connection established to isolated GCE node: dev-cluster-4a`,
-          `Type 'antigravity prompt "your instruction"' to direct the agent against this project.`,
-          `Hidden validation tests are mounted outside the editable workspace.`,
-          `interview@anticode-vm:~$ `
-        ]);
+        const bannerLines = [
+          `                                        `,
+          `   █████╗ ███╗   ██╗████████╗██╗ ██████╗ ██████╗ ██████╗ ███████╗`,
+          `  ██╔══██╗████╗  ██║╚══██╔══╝██║██╔════╝██╔═══██╗██╔══██╗██╔════╝`,
+          `  ███████║██╔██╗ ██║   ██║   ██║██║     ██║   ██║██║  ██║█████╗  `,
+          `  ██╔══██║██║╚██╗██║   ██║   ██║██║     ██║   ██║██║  ██║██╔══╝  `,
+          `  ██║  ██║██║ ╚████║   ██║   ██║╚██████╗╚██████╔╝██████╔╝███████╗`,
+          `  ╚═╝  ╚═╝╚═╝  ╚═══╝   ╚═╝   ╚═╝ ╚═════╝ ╚═════╝ ╚═════╝ ╚══════╝`,
+          `                                                                 `,
+          `🌌 Antigravity Autonomous Terminal CLI v2.0 - Active & Ready`,
+          `-----------------------------------------------------------------`,
+          `⚡ Shortcode Aliases Pre-Activated:`,
+          `  • prompt "instruction" ➔ antigravity prompt "..."`,
+          `  • ask "instruction"    ➔ antigravity ask "..."`,
+          `  • run                  ➔ antigravity run`,
+          `  • test                 ➔ antigravity test`,
+          `  • status               ➔ antigravity status`,
+          `  • clear                ➔ clear terminal history`,
+          `-----------------------------------------------------------------`,
+          `agy 🧠 >> `
+        ];
+        setTerminalLogs(bannerLines);
       } catch (err: unknown) {
         console.error(err);
         if (active) {
           setTerminalLogs([
             `Error initializing workspace sandbox: ${getErrorMessage(err)}`,
-            `interview@anticode-vm:~$ `
+            `agy 🧠 >> `
           ]);
         }
       }
@@ -470,10 +739,10 @@ function WorkspaceCockpit() {
 
     setTerminalLogs(prev => [
       ...prev.slice(0, -1),
-      agentCommand,
+      `agy 🧠 >> ${agentCommand}`,
       `[system] Spawning secure Antigravity CLI daemon...`,
       `[system] Executing autonomous cognitive repair loops inside candidate_workspace/${problemSlug}...`,
-      `interview@anticode-vm:~$ `
+      `agy 🧠 >> `
     ]);
 
     try {
@@ -482,7 +751,8 @@ function WorkspaceCockpit() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           problemSlug,
-          command: agentCommand
+          command: agentCommand,
+          sessionId
         })
       });
       const data = await response.json() as ExecuteResponse;
@@ -516,7 +786,7 @@ function WorkspaceCockpit() {
           setTerminalLogs(prev => [
             ...prev.slice(0, -1),
             `Finished autonomous agent pipeline. Sandbox workspace fully synchronized.`,
-            `interview@anticode-vm:~$ `
+            `agy 🧠 >> `
           ]);
           return;
         }
@@ -528,7 +798,7 @@ function WorkspaceCockpit() {
         setTerminalLogs(prev => [
           ...prev.slice(0, -1),
           line,
-          `interview@anticode-vm:~$ `
+          `agy 🧠 >> `
         ]);
 
         // Intercept log segments to extract thoughts & actions for the sidebar panel
@@ -560,7 +830,7 @@ function WorkspaceCockpit() {
       setTerminalLogs(prev => [
         ...prev.slice(0, -1),
         `Error deploying agent: ${getErrorMessage(err)}`,
-        `interview@anticode-vm:~$ `
+        `agy 🧠 >> `
       ]);
     }
   };
@@ -569,9 +839,9 @@ function WorkspaceCockpit() {
   const handleRunTests = async () => {
     setTerminalLogs(prev => [
       ...prev.slice(0, -1),
-      `antigravity test`,
+      `agy 🧠 >> antigravity test`,
       `[system] Launching unit assertion suite (run_tests.py)...`,
-      `interview@anticode-vm:~$ `
+      `agy 🧠 >> `
     ]);
 
     try {
@@ -580,7 +850,8 @@ function WorkspaceCockpit() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           problemSlug,
-          command: "antigravity test"
+          command: "antigravity test",
+          sessionId
         })
       });
       const data = await response.json() as ExecuteResponse;
@@ -598,16 +869,30 @@ function WorkspaceCockpit() {
 
       setTerminalLogs(prev => [
         ...prev.slice(0, -4),
-        `antigravity test`,
+        `agy 🧠 >> antigravity test`,
         ...newLogs,
-        `interview@anticode-vm:~$ `
+        `agy 🧠 >> `
       ]);
+
+      // Re-fetch files from the workspace to load any changes
+      try {
+        const res = await fetch(`/api/workspace?problemSlug=${problemSlug}`);
+        if (res.ok) {
+          const workspaceData = await res.json() as WorkspaceResponse;
+          setFiles(workspaceData.files);
+          if (activeTab && workspaceData.files[activeTab]) {
+            setCode(workspaceData.files[activeTab]);
+          }
+        }
+      } catch (e) {
+        console.error("Failed to re-sync files:", e);
+      }
     } catch (err: unknown) {
       setTerminalLogs(prev => [
         ...prev.slice(0, -4),
-        `antigravity test`,
+        `agy 🧠 >> antigravity test`,
         `Error running tests: ${getErrorMessage(err)}`,
-        `interview@anticode-vm:~$ `
+        `agy 🧠 >> `
       ]);
     }
   };
@@ -621,63 +906,46 @@ function WorkspaceCockpit() {
     setTerminalInput("");
 
     if (cmd === "clear") {
-      setTerminalLogs([`interview@anticode-vm:~$ `]);
+      setTerminalLogs([`agy 🧠 >> `]);
       return;
     }
 
-    if (isAgentCliCommand(cmd)) {
-      handleDeployAgent(cmd);
-      return;
-    }
+    // Define helper list of specific shortcuts
+    const isExplicitTest = cmd === "test" || cmd === "antigravity test" || cmd === "python run_tests.py";
+    const isExplicitRun = cmd === "run" || cmd === "antigravity run";
+    const isExplicitStatus = cmd === "status" || cmd === "antigravity status";
 
-    if (cmd === "antigravity test" || cmd === "python run_tests.py") {
+    if (isExplicitTest) {
       handleRunTests();
       return;
     }
 
-    setTerminalLogs(prev => [
-      ...prev.slice(0, -1),
-      `${cmd}`,
-      `Executing command inside isolated VM container...`,
-      `interview@anticode-vm:~$ `
-    ]);
-
-    try {
-      const response = await fetch("/api/execute", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          problemSlug,
-          command: cmd
-        })
-      });
-      const data = await response.json() as ExecuteResponse;
-
-      const newLogs: string[] = [];
-      if (data.stdout) {
-        newLogs.push(...stripAnsiCodes(data.stdout).trim().split("\n"));
-      }
-      if (data.stderr) {
-        newLogs.push(...stripAnsiCodes(data.stderr).trim().split("\n"));
-      }
-      if (newLogs.length === 0) {
-        newLogs.push(`Command finished with Exit Code ${data.code}`);
-      }
-
-      setTerminalLogs(prev => [
-        ...prev.slice(0, -4),
-        `${cmd}`,
-        ...newLogs,
-        `interview@anticode-vm:~$ `
-      ]);
-    } catch (err: unknown) {
-      setTerminalLogs(prev => [
-        ...prev.slice(0, -4),
-        `${cmd}`,
-        `Error: ${getErrorMessage(err)}`,
-        `interview@anticode-vm:~$ `
-      ]);
+    if (isExplicitRun) {
+      handleDeployAgent("antigravity run");
+      return;
     }
+
+    if (isExplicitStatus) {
+      handleDeployAgent("antigravity status");
+      return;
+    }
+
+    // Check if command is already an agent CLI structure
+    if (isAgentCliCommand(cmd)) {
+      // Normalize direct shortcut aliases (prompt "..." or ask "...")
+      let normalizedCmd = cmd;
+      if (cmd.startsWith("prompt ")) {
+        normalizedCmd = `antigravity ${cmd}`;
+      } else if (cmd.startsWith("ask ")) {
+        normalizedCmd = `antigravity ${cmd}`;
+      }
+      handleDeployAgent(normalizedCmd);
+      return;
+    }
+
+    // For any other non-shortcut plain-text inputs, automatically wrap them as antigravity prompt "..."
+    const promptCommand = `antigravity prompt "${cmd.replace(/"/g, '\\"')}"`;
+    handleDeployAgent(promptCommand);
   };
 
   // Best-of-3 Consensus grading submission
@@ -688,7 +956,7 @@ function WorkspaceCockpit() {
       setTerminalLogs(prev => [
         ...prev.slice(0, -1),
         `[WARNING] Cannot trigger evaluation: Rubric weights sum to ${(weightSum * 100).toFixed(0)}%, but must equal exactly 100%.`,
-        `interview@anticode-vm:~$ `
+        `agy 🧠 >> `
       ]);
       return;
     }
@@ -700,7 +968,7 @@ function WorkspaceCockpit() {
     setTerminalLogs(prev => [
       ...prev.slice(0, -1),
       `[system] Submitting sandbox code files for Best-of-3 Gemini Consensus evaluation...`,
-      `interview@anticode-vm:~$ `
+      `agy 🧠 >> `
     ]);
 
     try {
@@ -867,8 +1135,8 @@ function WorkspaceCockpit() {
         {/* Left Side: IDE & Terminal (60% width) */}
         <div className="w-full lg:w-[60%] h-[55%] lg:h-full border-b lg:border-b-0 lg:border-r border-slate-800/80 flex flex-col overflow-hidden">
 
-          {/* Active Physical IDE (Top Panel 60% height) */}
-          <div className="h-[60%] flex flex-col border-b border-slate-800/80 bg-bg-dark/40 overflow-hidden">
+          {/* Active Physical IDE (Top Panel 35% height) */}
+          <div className="h-[35%] flex flex-col border-b border-slate-800/80 bg-bg-dark/40 overflow-hidden shrink-0">
             {/* File explorer tabs */}
             <div className="h-9 border-b border-slate-800/80 bg-bg-panel/40 flex items-center gap-2 px-3 sm:px-4 text-xs font-mono text-text-muted shrink-0 overflow-x-auto overflow-y-hidden">
               <div className="hidden sm:flex items-center gap-1 shrink-0">
@@ -902,38 +1170,72 @@ function WorkspaceCockpit() {
               </div>
             </div>
 
-            {/* Code canvas viewport with active, synchronized textarea */}
-            <div className="flex-1 flex overflow-hidden font-mono text-xs text-text-main relative bg-bg-dark/20">
-              <div className="w-12 border-r border-slate-800/40 py-5 select-none text-right pr-3 font-mono text-text-muted/30 leading-[21px] flex flex-col shrink-0 overflow-hidden bg-bg-dark/10">
-                {Array.from({ length: Math.max(20, (code || "").split("\n").length) }).map((_, i) => (
-                  <div key={i} className="h-[21px]">{i + 1}</div>
-                ))}
+            {/* Code canvas viewport with hierarchical explorer sidebar & active overlapping highlighter editor */}
+            <div className="flex-1 flex overflow-hidden">
+              
+              {/* Hierarchical vertical files explorer sidebar */}
+              <div className="w-52 shrink-0 border-r border-slate-800/80 bg-bg-panel/10 flex flex-col h-full overflow-hidden select-none">
+                <div className="h-8 border-b border-slate-800/80 bg-bg-panel/20 flex items-center px-3 font-mono text-[10px] text-text-muted shrink-0 uppercase tracking-widest font-bold">
+                  <span>Files Explorer</span>
+                </div>
+                <div className="flex-1 overflow-auto p-2 scrollbar-thin scrollbar-thumb-slate-800/50">
+                  {renderFileTree(buildFileTree(Object.keys(files)))}
+                </div>
               </div>
-              <div className="flex-1 h-full relative">
-                <textarea
-                  aria-label={`Editor for ${activeTab || "workspace file"}`}
-                  value={code}
-                  onChange={(e) => setCode(e.target.value)}
-                  spellCheck="false"
-                  disabled={isRunning || isEvaluating}
-                  className="w-full h-full p-5 outline-none select-text leading-[21px] whitespace-pre font-mono text-text-green bg-transparent border-none resize-none overflow-auto scrollbar-thin scrollbar-thumb-slate-800 focus:ring-0 focus:outline-none"
-                  style={{ tabSize: 4 }}
-                />
-                {isSaving && (
-                  <div className="absolute right-4 top-4 font-mono text-[9px] text-agy-green animate-pulse flex items-center gap-1.5 bg-bg-dark/80 px-2 py-1 rounded border border-agy-green/20">
-                    <Database className="w-3 h-3" />
-                    <span>AUTO-SAVING...</span>
-                  </div>
-                )}
+
+              {/* Main overlapping editor canvas */}
+              <div className="flex-1 flex overflow-hidden font-mono text-xs text-text-main relative bg-bg-dark/20 h-full">
+                
+                {/* Scroll-synchronized line numbers */}
+                <div
+                  ref={lineNumbersRef}
+                  className="w-12 border-r border-slate-800/40 py-5 select-none text-right pr-3 font-mono text-text-muted/30 leading-[21px] flex flex-col shrink-0 overflow-hidden bg-bg-dark/10 h-full"
+                >
+                  {Array.from({ length: Math.max(20, (code || "").split("\n").length) }).map((_, i) => (
+                    <div key={i} className="h-[21px] shrink-0">{i + 1}</div>
+                  ))}
+                </div>
+
+                {/* Overlapping Code input & display layers */}
+                <div className="flex-1 h-full relative overflow-hidden">
+                  
+                  {/* Syntax highlighting display layer */}
+                  <pre
+                    ref={preRef}
+                    className="absolute inset-0 p-5 m-0 border-0 leading-[21px] font-mono text-xs pointer-events-none whitespace-pre overflow-hidden text-text-main"
+                    dangerouslySetInnerHTML={{ __html: getHighlighter(code || "", activeTab) }}
+                  />
+
+                  {/* Translucent overlay editing input */}
+                  <textarea
+                    ref={textareaRef}
+                    aria-label={`Editor for ${activeTab || "workspace file"}`}
+                    value={code}
+                    onChange={(e) => setCode(e.target.value)}
+                    onScroll={handleScroll}
+                    spellCheck="false"
+                    disabled={isRunning || isEvaluating}
+                    className="absolute inset-0 w-full h-full p-5 m-0 border-0 leading-[21px] font-mono text-xs bg-transparent text-transparent caret-white resize-none overflow-auto outline-none focus:ring-0 focus:outline-none"
+                    style={{ tabSize: 4 }}
+                  />
+
+                  {isSaving && (
+                    <div className="absolute right-4 top-4 font-mono text-[9px] text-agy-green animate-pulse flex items-center gap-1.5 bg-bg-dark/80 px-2 py-1 rounded border border-agy-green/20 z-10">
+                      <Database className="w-3.5 h-3.5" />
+                      <span>AUTO-SAVING...</span>
+                    </div>
+                  )}
+                </div>
+
               </div>
             </div>
           </div>
 
-          {/* Physically Working Terminal CLI Console (Bottom Panel 40% height) */}
-          <div className="h-[40%] flex flex-col bg-bg-dark overflow-hidden shrink-0">
+          {/* Physically Working Terminal CLI Console (Bottom Panel 65% height) */}
+          <div className="h-[65%] flex flex-col bg-bg-dark overflow-hidden flex-1">
             <div className="h-8 border-b border-slate-800/80 bg-bg-panel/30 flex items-center px-4 justify-between font-mono text-[10px] text-text-muted shrink-0">
               <span className="flex items-center gap-1.5">
-                <TerminalIcon className="w-3 h-3" />
+                <TerminalIcon className="w-3.5 h-3.5 text-agy-cyan animate-pulse" />
                 VIRTUAL TERMINAL CLI (Isolated Environment)
               </span>
               <span className="text-agy-green">ONLINE: UTC-8</span>
@@ -942,7 +1244,7 @@ function WorkspaceCockpit() {
             {/* Logs Area */}
             <div className="flex-1 overflow-auto p-4 font-mono text-[11px] leading-relaxed space-y-1.5 select-text">
               {terminalLogs.map((log, i) => {
-                const isUserPrompt = log.includes("interview@anticode-vm");
+                const isUserPrompt = log.startsWith("agy 🧠 >>");
                 const isAgentCall = log.includes("antigravity agent calling") || log.includes("[antigravity agent]");
                 const isAgentThought = log.includes("antigravity agent:");
                 const isPassed = log.includes("PASSED") || log.includes("SUCCESS");
@@ -959,8 +1261,8 @@ function WorkspaceCockpit() {
                   <div key={i} className={logClass}>
                     {isUserPrompt ? (
                       <>
-                        <span>{log.split("$ ")[0]}$</span>
-                        <span className="text-white ml-1">{log.split("$ ")[1]}</span>
+                        <span className="text-agy-cyan font-semibold mr-1.5">agy 🧠 &gt;&gt;</span>
+                        <span className="text-white font-semibold">{log.replace("agy 🧠 >>", "").trim()}</span>
                       </>
                     ) : log}
                   </div>
@@ -970,16 +1272,16 @@ function WorkspaceCockpit() {
             </div>
 
             {/* Command form field */}
-            <form onSubmit={handleTerminalSubmit} className="h-9 border-t border-slate-800/80 bg-bg-panel/20 flex items-center px-4 font-mono text-xs">
-              <span className="text-agy-cyan font-semibold mr-1.5 shrink-0">interview@anticode-vm:~$</span>
+            <form onSubmit={handleTerminalSubmit} className="h-10 border-t border-slate-800/80 bg-bg-panel/20 flex items-center px-4 font-mono text-xs">
+              <span className="text-agy-cyan font-semibold mr-2 shrink-0">agy 🧠 &gt;&gt;</span>
               <input
                 type="text"
                 aria-label="Terminal command"
                 value={terminalInput}
                 onChange={(e) => setTerminalInput(e.target.value)}
                 disabled={isRunning || isEvaluating}
-                placeholder='antigravity prompt "Implement the missing service behavior..."'
-                className="flex-1 bg-transparent text-white outline-none border-none caret-agy-green"
+                placeholder="Ask or prompt the agent directly..."
+                className="flex-1 bg-transparent text-white outline-none border-none caret-agy-cyan focus:ring-0"
               />
             </form>
           </div>
@@ -1100,7 +1402,7 @@ function WorkspaceCockpit() {
                       ...prev.slice(0, -1),
                       `[WARNING] --- ESCALATED ANOMALY STRAIN LOADED ---`,
                       `[VM CLUSTER] Dynamic network delay increased by 150ms.`,
-                      `interview@anticode-vm:~$ `
+                      `agy 🧠 >> `
                     ]);
                   }}
                   disabled={injectedStrain}
@@ -1116,12 +1418,12 @@ function WorkspaceCockpit() {
                     setVmPatched(true);
                     setTerminalLogs(prev => [
                       ...prev.slice(0, -1),
-                      `antigravity sys --patch-vm`,
+                      `agy 🧠 >> antigravity sys --patch-vm`,
                       `[system] Initiating VM kernel hot-patch...`,
                       `[system] Flush file cache: SUCCESS`,
                       `[system] Recalibrating VPC firewall parameters...`,
                       `[system] Core sandbox fully synchronized and refreshed!`,
-                      `interview@anticode-vm:~$ `
+                      `agy 🧠 >> `
                     ]);
                   }}
                   disabled={vmPatched}
@@ -1137,11 +1439,11 @@ function WorkspaceCockpit() {
                     setCompletionProgress(100);
                     setTerminalLogs(prev => [
                       ...prev.slice(0, -1),
-                      `antigravity bypass-tests --force-pass`,
+                      `agy 🧠 >> antigravity bypass-tests --force-pass`,
                       `[system] Initiating test bypass sequence...`,
                       `[system] Override local unit-test results...`,
                       `[system] 3/3 secret validation cases passed (FORCED BY INTERVIEWER)`,
-                      `interview@anticode-vm:~$ `
+                      `agy 🧠 >> `
                     ]);
                   }}
                   className="py-2 px-2 rounded-lg border border-agy-green/30 bg-agy-green/5 text-agy-green hover:bg-agy-green/10 font-mono text-[9px] font-semibold flex items-center justify-center gap-1 cursor-pointer transition-all"

@@ -1,5 +1,7 @@
 // Google Gemini 3.5 Best-of-3 Evaluator Service
 // Connects directly to Gemini Developer API with Structured JSON Outputs
+import fs from "fs";
+import path from "path";
 
 export interface EvaluatorRubric {
   metric_key: string;
@@ -131,6 +133,24 @@ export async function runConsensusEvaluation(
     ? customRubrics
     : (FALLBACK_CHALLENGE_RUBRICS[problemSlug] || DEFAULT_RUBRICS);
 
+  // Read the candidate's workspace transcript timeline
+  const sandboxDir = path.resolve(process.cwd(), "candidate_workspace", problemSlug);
+  const transcriptPath = path.join(sandboxDir, ".antigravity", "transcript.jsonl");
+  let formattedTimeline = "No interactive timeline events recorded.";
+  if (fs.existsSync(transcriptPath)) {
+    try {
+      const transcriptContent = fs.readFileSync(transcriptPath, "utf-8");
+      const lines = transcriptContent.trim().split("\n").filter(Boolean);
+      const events = lines.map(line => JSON.parse(line));
+      formattedTimeline = events.map((ev, idx) => {
+        const metricsStr = ev.metrics ? ` | Metrics: ${JSON.stringify(ev.metrics)}` : "";
+        return `${idx + 1}. [${ev.timestamp}] Action/Type: ${ev.type} | Input/Prompt: "${ev.input}" | Output: "${ev.output_summary}"${metricsStr}`;
+      }).join("\n");
+    } catch (e) {
+      formattedTimeline = `Error loading chronological transcript logs: ${e instanceof Error ? e.message : String(e)}`;
+    }
+  }
+
   if (!GEMINI_API_KEY) {
     console.warn("GEMINI_API_KEY is not defined. Emulating high-fidelity consensus report.");
     return generateFallbackMockGrade(problemSlug, rubrics);
@@ -140,9 +160,10 @@ export async function runConsensusEvaluation(
     // Generate evaluation prompt
     const prompt = `
 You are an expert Google Antigravity Code Evaluator and Google Ventures Technical Judge.
-Evaluate the following candidate code and trace logs submitted during their agentic systems interview.
+Evaluate the following candidate code, trace logs, and interactive CLI chronological transcript timeline submitted during their agentic systems interview.
 
 [CHALLENGE]: ${problemSlug}
+
 [SUBMITTED CODE]:
 \`\`\`python
 ${candidateCode}
@@ -151,8 +172,16 @@ ${candidateCode}
 [TRACE LOGS]:
 ${JSON.stringify(executionLogs, null, 2)}
 
+[CHRONOLOGICAL TRANSCRIPT TIMELINE]:
+${formattedTimeline}
+
 Provide scores from 0 to 100 along with brief specific constructive feedback for each of the following evaluation rubrics:
 ${rubrics.map(r => `- ${r.metric_key} (${r.metric_label}): ${r.description} (Weight: ${r.weight})`).join("\n")}
+
+When scoring rubrics like efficiency, cooperation, or prompting effectiveness, pay close attention to the [CHRONOLOGICAL TRANSCRIPT TIMELINE]. Evaluate:
+- Turn/Solving Efficiency: Did they resolve errors in fewer prompts or systematically repeat the same command?
+- Resource Stewardship: Total tokens consumed and simulated pricing costs.
+- Collaboration Agility: Did they read error logs and test failures and provide appropriate feedback to the agent?
 
 Format your response strictly adhering to the JSON schema, returning detailed individual scores in the 'scores' object.
 Add a detailed summary_review (approx 3 sentences) in a strict, constructive, encouraging VC-evaluation tone.

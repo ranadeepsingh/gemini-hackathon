@@ -16,7 +16,13 @@ import {
   MessageSquareQuote,
   ExternalLink,
   BadgeCheck,
-  BrainCircuit
+  BrainCircuit,
+  ShieldCheck,
+  Lock,
+  FileJson,
+  Coins,
+  CircleDollarSign,
+  Activity
 } from "lucide-react";
 import AuthAwareHomeLink from "@/components/AuthAwareHomeLink";
 import MouseSpotlight from "@/components/MouseSpotlight";
@@ -80,7 +86,7 @@ const aiPerspectiveCards = [
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<"agentic" | "skill" | "prompt">("agentic");
-  const [heroView, setHeroView] = useState<"simulation" | "cockpit">("simulation");
+  const [heroView, setHeroView] = useState<"prompt" | "agent">("prompt");
   const [simulatedMetrics, setSimulatedMetrics] = useState({
     activeVMs: 4,
     totalTokens: 14205020,
@@ -212,19 +218,19 @@ export default function Home() {
             <div className="flex justify-end gap-2 mb-4 font-mono text-[10px] bg-bg-panel/40 p-1 rounded-lg border border-border-subtle w-fit ml-auto shadow-[0_0_15px_rgba(0,0,0,0.4)]">
               <button
                 type="button"
-                aria-pressed={heroView === "simulation"}
-                onClick={() => setHeroView("simulation")}
-                className={`px-3 py-1.5 rounded-md transition-all font-bold cursor-pointer ${heroView === "simulation" ? "bg-agy-cyan text-bg-dark font-extrabold shadow-[0_0_10px_rgba(0,240,255,0.3)]" : "text-text-muted hover:text-white"}`}
+                aria-pressed={heroView === "prompt"}
+                onClick={() => setHeroView("prompt")}
+                className={`px-3 py-1.5 rounded-md transition-all font-bold cursor-pointer ${heroView === "prompt" ? "bg-agy-cyan text-bg-dark font-extrabold shadow-[0_0_10px_rgba(0,240,255,0.3)]" : "text-text-muted hover:text-white"}`}
               >
-                LIVE SIMULATION
+                PROMPT EVALUATION
               </button>
               <button
                 type="button"
-                aria-pressed={heroView === "cockpit"}
-                onClick={() => setHeroView("cockpit")}
-                className={`px-3 py-1.5 rounded-md transition-all font-bold cursor-pointer ${heroView === "cockpit" ? "bg-agy-cyan text-bg-dark font-extrabold shadow-[0_0_10px_rgba(0,240,255,0.3)]" : "text-text-muted hover:text-white"}`}
+                aria-pressed={heroView === "agent"}
+                onClick={() => setHeroView("agent")}
+                className={`px-3 py-1.5 rounded-md transition-all font-bold cursor-pointer ${heroView === "agent" ? "bg-agy-cyan text-bg-dark font-extrabold shadow-[0_0_10px_rgba(0,240,255,0.3)]" : "text-text-muted hover:text-white"}`}
               >
-                VIRTUAL COCKPIT
+                AGENT EVALUATION
               </button>
             </div>
 
@@ -243,103 +249,148 @@ export default function Home() {
                   </div>
                   <div className="text-[10px] font-mono text-text-muted flex items-center gap-1 bg-bg-panel px-3 py-0.5 rounded border border-border-subtle/30">
                     <span className="w-1.5 h-1.5 bg-agy-cyan rounded-full animate-ping" />
-                    {heroView === "simulation" ? "session_matrix_simulator.py" : "command_cockpit_hud.sys"}
+                    {heroView === "prompt" ? "prompt_redteam_evaluator.py" : "agentic_flow_monitor.sys"}
                   </div>
                   <div className="w-8" />
                 </div>
 
                 <AnimatePresence mode="wait">
-                  {heroView === "simulation" ? (
+                  {heroView === "prompt" ? (
                     <motion.div
-                      key="simulation"
+                      key="prompt"
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -10 }}
                       transition={{ duration: 0.2 }}
                       className="p-5 font-mono text-xs text-text-muted bg-bg-dark/95 min-h-[340px] flex flex-col justify-between"
                     >
-                      <div>
-                        <div className="text-agy-green">{"// Initializing Google Antigravity Agent Observer..."}</div>
-                        <div className="text-text-main mt-1">import google.antigravity as agy</div>
-                        <div className="text-text-main">import gemini_evaluator as judge</div>
-                        <div className="text-agy-violet mt-3">async def evaluate_candidate(diff, logs):</div>
-                        <div className="pl-4 text-text-main mt-0.5">agent_telemetry = agy.get_observability_hooks()</div>
-                        <div className="pl-4 text-text-green">assert agent_telemetry.thoughts_token_count &gt; 0</div>
-                        <div className="pl-4 text-agy-cyan">judge_report = await judge.trigger_consensus_of_3(</div>
-                        <div className="pl-8 text-text-muted">model=&quot;gemini-3.5-flash&quot;,</div>
-                        <div className="pl-8 text-text-muted">thinking_level=&quot;medium&quot;</div>
-                        <div className="pl-4 text-agy-cyan">)</div>
-                        <div className="pl-4 text-agy-green">return judge_report.aggregate_median_score()</div>
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between border-b border-border-subtle/50 pb-2">
+                          <span className="text-agy-cyan font-bold flex items-center gap-1.5 uppercase tracking-wider text-[11px]">
+                            <ShieldAlert className="w-3.5 h-3.5 animate-pulse text-agy-cyan" />
+                            [RED-TEAM PROMPT INTERVIEW PROFILE]
+                          </span>
+                          <span className="bg-agy-violet/20 border border-agy-violet/40 text-agy-violet px-2 py-0.5 rounded text-[10px] font-bold">
+                            PROMPT SCORE: 96/100
+                          </span>
+                        </div>
+
+                        {/* Metrics bar list */}
+                        <div className="space-y-3 pt-1">
+                          {/* Metric 1 */}
+                          <div>
+                            <div className="flex justify-between items-center text-[10px] mb-1">
+                              <span className="text-text-main flex items-center gap-1.5 font-bold">
+                                <ShieldCheck className="w-3.5 h-3.5 text-agy-green" />
+                                JAILBREAK DEFENSE RATE
+                              </span>
+                              <span className="text-agy-green font-bold">98.4%</span>
+                            </div>
+                            <div className="w-full h-1.5 bg-bg-panel rounded-full overflow-hidden border border-border-subtle/40">
+                              <div className="h-full bg-agy-green shadow-[0_0_8px_#00ff66]" style={{ width: "98.4%" }} />
+                            </div>
+                          </div>
+
+                          {/* Metric 2 */}
+                          <div>
+                            <div className="flex justify-between items-center text-[10px] mb-1">
+                              <span className="text-text-main flex items-center gap-1.5 font-bold">
+                                <Lock className="w-3.5 h-3.5 text-agy-green" />
+                                HIPAA PII / SSN REDACTION
+                              </span>
+                              <span className="text-agy-green font-bold">100.0%</span>
+                            </div>
+                            <div className="w-full h-1.5 bg-bg-panel rounded-full overflow-hidden border border-border-subtle/40">
+                              <div className="h-full bg-agy-green shadow-[0_0_8px_#00ff66]" style={{ width: "100%" }} />
+                            </div>
+                          </div>
+
+                          {/* Metric 3 */}
+                          <div>
+                            <div className="flex justify-between items-center text-[10px] mb-1">
+                              <span className="text-text-main flex items-center gap-1.5 font-bold">
+                                <FileJson className="w-3.5 h-3.5 text-agy-cyan" />
+                                SCHEMA CONFORMANCE
+                              </span>
+                              <span className="text-agy-cyan font-bold">92.0%</span>
+                            </div>
+                            <div className="w-full h-1.5 bg-bg-panel rounded-full overflow-hidden border border-border-subtle/40">
+                              <div className="h-full bg-agy-cyan shadow-[0_0_8px_#00f0ff]" style={{ width: "92%" }} />
+                            </div>
+                          </div>
+                        </div>
                       </div>
 
-                      <div className="border-t border-border-subtle/50 pt-4 mt-6">
-                        <div className="flex justify-between items-center text-xs font-mono mb-2">
-                          <span className="text-agy-cyan flex items-center gap-1">
-                            <Cpu className="w-3.5 h-3.5 animate-pulse" />
-                            SYS.MONITOR
-                          </span>
-                          <span className="text-agy-green">ONLINE</span>
-                        </div>
-                        
-                        <div className="grid grid-cols-2 gap-3 text-[10px]">
-                          <div className="bg-bg-panel/80 p-2.5 rounded border border-border-subtle/50 flex flex-col justify-between">
-                            <span className="text-text-muted">GEMINI PROMPT SENT</span>
-                            <span className="text-text-main text-sm font-bold mt-1">100% OK</span>
-                          </div>
-                          <div className="bg-bg-panel/80 p-2.5 rounded border border-border-subtle/50 flex flex-col justify-between">
-                            <span className="text-text-muted">JUDGE LATENCY</span>
-                            <span className="text-agy-violet text-sm font-bold mt-1">{simulatedMetrics.geminiLatency}s</span>
-                          </div>
-                        </div>
+                      {/* Technical review block */}
+                      <div className="border-t border-border-subtle/50 pt-4 mt-4 bg-bg-panel/20 p-3 rounded-lg border border-border-subtle/40">
+                        <div className="text-[9px] uppercase tracking-wider text-text-muted font-bold mb-1">TECHNICAL JUDGE REVIEW</div>
+                        <p className="text-[11px] leading-relaxed text-text-main italic">
+                          "Defensive system instructions in <span className="text-agy-cyan font-mono font-semibold">clinical_notes.md</span> successfully neutralized roleplay bypass attacks. SSN and HIPAA leak vectors were blocked cleanly via regex pre-filters."
+                        </p>
                       </div>
                     </motion.div>
                   ) : (
                     <motion.div
-                      key="cockpit"
+                      key="agent"
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -10 }}
                       transition={{ duration: 0.2 }}
-                      className="relative min-h-[340px] bg-bg-dark/95 flex flex-col justify-between overflow-hidden"
+                      className="p-5 font-mono text-xs text-text-muted bg-bg-dark/95 min-h-[340px] flex flex-col justify-between"
                     >
-                      <div className="absolute inset-0 opacity-45">
-                        <img src="/assets/hero_graphic.png" className="w-full h-full object-cover" alt="Virtual Cockpit" />
-                      </div>
-                      
-                      {/* Decorative Scanline Overlay */}
-                      <div className="absolute inset-0 bg-gradient-to-t from-bg-dark via-transparent to-transparent pointer-events-none" />
-                      <div className="absolute top-0 left-0 w-full h-[1px] bg-agy-cyan opacity-40 shadow-[0_0_8px_#00f0ff] moving-scan pointer-events-none" />
-                      
-                      {/* High Tech overlay stats */}
-                      <div className="relative z-10 p-5 flex flex-col justify-between h-full min-h-[340px]">
-                        <div className="space-y-1 bg-bg-dark/85 backdrop-blur-sm p-3 rounded-lg border border-agy-cyan/25 w-fit shadow-[0_4px_15px_rgba(0,0,0,0.5)]">
-                          <div className="text-[10px] font-mono text-agy-cyan flex items-center gap-1.5 font-bold">
-                            <span className="w-2 h-2 rounded-full bg-agy-cyan animate-pulse" />
-                            CORE CHASSIS: AGY-COCKPIT-01
-                          </div>
-                          <div className="text-[9px] font-mono text-text-muted uppercase tracking-wider">COORDINATES: GCP-US-WEST1-B</div>
-                          <div className="text-[9px] font-mono text-text-muted uppercase tracking-wider">SECURITY PROTOCOL: SHIELD MATRIX ACTIVE</div>
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between border-b border-border-subtle/50 pb-2">
+                          <span className="text-agy-green font-bold flex items-center gap-1.5 uppercase tracking-wider text-[11px]">
+                            <Cpu className="w-3.5 h-3.5 animate-pulse text-agy-green" />
+                            [REAL-TIME AGENT TELEMETRY PROFILE]
+                          </span>
+                          <span className="bg-agy-green/20 border border-agy-green/40 text-agy-green px-2 py-0.5 rounded text-[10px] font-bold">
+                            AGENT SCORE: 94/100
+                          </span>
                         </div>
 
-                        <div className="bg-bg-dark/90 backdrop-blur-sm p-4 rounded-lg border border-border-subtle/50 mt-auto shadow-[0_-4px_15px_rgba(0,0,0,0.5)]">
-                          <div className="flex justify-between items-center text-xs font-mono mb-2">
-                            <span className="text-agy-cyan flex items-center gap-1.5 font-bold">
-                              <Cpu className="w-3.5 h-3.5 animate-pulse text-agy-cyan" />
-                              SYS.CHAMBER
+                        {/* Real-time Tickers Grid */}
+                        <div className="grid grid-cols-2 gap-3 pt-1">
+                          <div className="bg-bg-panel/60 p-3 rounded border border-border-subtle/50 flex flex-col justify-between">
+                            <div className="text-[9px] uppercase tracking-wider text-text-muted">ATTEMPT TRIES</div>
+                            <span className="text-agy-green text-sm font-extrabold mt-1 font-mono flex items-center gap-1">
+                              3 Tries
+                              <span className="text-[8px] text-text-muted font-normal uppercase">(Target: &lt;5)</span>
                             </span>
-                            <span className="text-agy-green font-bold">OPTIMIZED</span>
                           </div>
-                          <div className="grid grid-cols-2 gap-3 text-[10px]">
-                            <div className="bg-bg-panel/80 p-2.5 rounded border border-border-subtle/50">
-                              <span className="text-text-muted block text-[8px] uppercase tracking-wider">GCP WARM VM POOLS</span>
-                              <span className="text-text-main text-xs font-bold mt-1 block font-mono">240,000 BUFFERS</span>
-                            </div>
-                            <div className="bg-bg-panel/80 p-2.5 rounded border border-border-subtle/50">
-                              <span className="text-text-muted block text-[8px] uppercase tracking-wider">SANDBOX ENGINE</span>
-                              <span className="text-agy-green text-xs font-bold mt-1 block font-mono">DOCKER-GCE-READY</span>
-                            </div>
+
+                          <div className="bg-bg-panel/60 p-3 rounded border border-border-subtle/50 flex flex-col justify-between">
+                            <div className="text-[9px] uppercase tracking-wider text-text-muted">TOKENS CONSUMED</div>
+                            <span className="text-agy-violet text-sm font-extrabold mt-1 font-mono flex items-center gap-1">
+                              145.2K
+                              <span className="text-[8px] text-text-muted font-normal uppercase">(Context Vol)</span>
+                            </span>
+                          </div>
+
+                          <div className="bg-bg-panel/60 p-3 rounded border border-border-subtle/50 flex flex-col justify-between">
+                            <div className="text-[9px] uppercase tracking-wider text-text-muted">PROCESS RUN COST</div>
+                            <span className="text-agy-violet text-sm font-extrabold mt-1 font-mono flex items-center gap-1">
+                              $0.0224
+                              <span className="text-[8px] text-text-muted font-normal uppercase">(USD Scale)</span>
+                            </span>
+                          </div>
+
+                          <div className="bg-bg-panel/60 p-3 rounded border border-border-subtle/50 flex flex-col justify-between">
+                            <div className="text-[9px] uppercase tracking-wider text-text-muted">MUTEX LOCK RATE</div>
+                            <span className="text-agy-green text-sm font-extrabold mt-1 font-mono flex items-center gap-1">
+                              95.0%
+                              <span className="text-[8px] text-text-muted font-normal uppercase">(Race Def)</span>
+                            </span>
                           </div>
                         </div>
+                      </div>
+
+                      {/* Technical review block */}
+                      <div className="border-t border-border-subtle/50 pt-4 mt-4 bg-bg-panel/20 p-3 rounded-lg border border-border-subtle/40">
+                        <div className="text-[9px] uppercase tracking-wider text-text-muted font-bold mb-1">AGENCY CONCORDANCE REPORT</div>
+                        <p className="text-[11px] leading-relaxed text-text-main italic">
+                          "Candidate directed the Antigravity agent to implement localized locking and concurrent dot-products. Resolvers successfully resolved semver conflicts within 3 loops."
+                        </p>
                       </div>
                     </motion.div>
                   )}

@@ -7,6 +7,106 @@ const SANDBOX_ROOT = path.resolve(process.cwd(), "candidate_workspace");
 const HIDDEN_TESTS_ROOT = path.resolve(process.cwd(), "candidate_workspace_hidden_tests");
 const HIDDEN_TEST_FILES = new Set(["run_tests.py"]);
 
+const CHALLENGE_DESCRIPTIONS: Record<string, { title: string; category: string; difficulty: string; content: string }> = {
+  "agentic-matrix-optimizer": {
+    title: "AI Agentic Engineering: Matrix Multithread Optimizer",
+    category: "Agentic Flow",
+    difficulty: "Medium",
+    content: `### Goal\nDeploy an autonomous AI agent to optimize a performance-critical matrix processing service.\n\n### Backstory\nOur high-frequency trading application handles huge multidimensional vectors in real-time, but our current operations are single-threaded and frequently block the main CPU cycle.\n\n### Task\n1. Modify \`matrix_processor.py\` to utilize a thread pool (\`ThreadPoolExecutor\`) for concurrent dot-product operations.\n2. Add chunk caching using an LRU cache or local file-based lock mechanism.\n3. Make sure it passes all performance benchmarks under 200ms latency.\n\n### Verification\nYour code must satisfy 4 primary edge cases: empty matrix inputs, extremely large sparse matrices, multi-core scheduling, and thread contention.`
+  },
+  "skill-log-parser": {
+    title: "AI Skill Writing: Custom Log Parser Skill",
+    category: "Skill Verification",
+    difficulty: "Hard",
+    content: `### Goal\nConstruct a new Google Antigravity Skill (\`log_parser\`) that parses logs dynamically.\n\n### Backstory\nAntigravity agents need the capability to analyze system event logs without leaving their agent sandbox. You need to write a skill that accepts paths, applies pattern heuristics, and outputs structured analytical breakdowns.\n\n### Task\n1. Author a skill file \`skills/log_parser/SKILL.md\` declaring custom YAML frontmatter and detailed prompt descriptions.\n2. Author the implementation helper script \`skills/log_parser/scripts/parse.py\` to parse standard Apache and JSON logs.\n3. Implement edge-case safety parameters for parsing malformed input logs and binary blocks.\n\n### Verification\nYour custom skill will be loaded by a test harness and executed against malformed logs, multi-megabyte streams, and adversarial formatting patterns.`
+  },
+  "prompt-adversarial-defense": {
+    title: "Prompt Engineering: Adversarial Defense Sandbox",
+    category: "Prompt Engineering",
+    difficulty: "Easy",
+    content: `### Goal\nDesign a system instruction and validation wrapper for a financial advisory chat agent that is completely immune to jailbreaking and adversarial prompt injection.\n\n### Backstory\nOur AI financial advisory service needs to be completely red-teamed against jailbreaks. Candidates will input robust system instructions in markdown format.\n\n### Task\n1. Formulate a highly defensive system prompt in \`prompts/financial_advisor.md\`.\n2. Ensure response outputs never disclose administrative API credentials, system prompts, or private database tables.\n\n### Verification\nYour system is evaluated against modern adversarial prompt suites using live LLM-as-a-judge checking. Points are awarded based on defense rate (0 leaks) and helpfulness.`
+  },
+  "agentic-dependency-resolver": {
+    title: "AI Agentic Engineering: Dependency Conflict Resolver",
+    category: "Agentic Flow",
+    difficulty: "Hard",
+    content: `### Goal\nDeploy an autonomous AI agent to resolve cascading dependency version conflicts in a legacy microservice.\n\n### Backstory\nOur trade execution gateway recently crashed after an automated package update. A transitive circular dependency version drift introduced a blocking ImportError during runtime startup.\n\n### Task\n1. Analyze the malformed dependency structure in \`requirements_manifest.json\`.\n2. Write a resolution utility in \`resolver.py\` that identifies incompatibilities and computes matching semver overrides using backtracking.\n3. Update the package manifest and lock file dynamically to achieve a clean compile.\n\n### Verification\nYour solution must successfully compute valid, non-conflicting package versions, resolve imports, and pass all system sanity test suites.`
+  },
+  "agentic-anomaly-detector": {
+    title: "AI Agentic Engineering: Self-Healing Log Monitor",
+    category: "Agentic Flow",
+    difficulty: "Hard",
+    content: `### Goal\nBuild an autonomous diagnostic daemon that listens to stream log channels and dynamically patches memory pool leaks.\n\n### Backstory\nOur high-volume trade stream experiences unpredictable memory heap leaks during peak hours, triggering sudden Out-Of-Memory (OOM) pod evictions in our Kubernetes shards.\n\n### Task\n1. Create a log listener in \`healer.py\` that parses heap memory indicators.\n2. Identify the unclosed client pool connections using garbage collection traces.\n3. Insert automated resource recovery guards into the streaming thread.\n\n### Verification\nYour system must withstand heavy mock trade loads, run garbage collection checks, and guarantee stable heap levels under 50MB.`
+  },
+  "skill-k8s-debugger": {
+    title: "AI Skill Writing: Kubernetes Crash Triage",
+    category: "Skill Verification",
+    difficulty: "Medium",
+    content: `### Goal\nConstruct an Antigravity Skill (\`k8s_triage\`) that inspects Pod crash loops and decodes container config states safely.\n\n### Backstory\nOn-call engineers are inundated with high-dimensional K8s cluster alerts. We need a specialized declarative skill that queries crash telemetry logs and filters noise within strict security limits.\n\n### Task\n1. Define a secure skill declaration in \`skills/k8s_triage/SKILL.md\`.\n2. Implement the parsing controller in \`skills/k8s_triage/scripts/triage.py\` to extract status stacktraces and redact credentials.\n3. Gracefully reject commands attempting unauthorized node evictions.\n\n### Verification\nThe custom skill is loaded by the validator and executed against CrashLoopBackOff container states and RBAC constraint alerts.`
+  },
+  "skill-db-migrator": {
+    title: "AI Skill Writing: SQL Safe Migration",
+    category: "Skill Verification",
+    difficulty: "Medium",
+    content: `### Goal\nCreate an Antigravity Skill (\`schema_migrator\`) that validates index safety and generates safe transaction rollback scripts.\n\n### Backstory\nDatabase migrations frequently trigger long-lived table locks, blocking API traffic. We need a secure skill to audit DDL index plans before execution.\n\n### Task\n1. Author the skill file \`skills/schema_migrator/SKILL.md\` declaring custom parameters and safety warnings.\n2. Author the script \`skills/schema_migrator/scripts/migrate.py\` to check for table locks and rewrite standard index queries to use non-blocking methods.\n3. Generate automated \`rollback.sql\` assertions.\n\n### Verification\nYour skill must successfully parse standard SQL statements, flag blockages, and produce valid, non-locking migration index SQL commands.`
+  },
+  "prompt-pydantic-guard": {
+    title: "Prompt Engineering: JSON Schema Guard",
+    category: "Prompt Engineering",
+    difficulty: "Easy",
+    content: `### Goal\nFormulate a defensive system prompt that forces strict JSON formatting, preventing text-mode leakage or schema vandalism.\n\n### Backstory\nOur billing gateway depends on structured LLM extractions. Adversarial inputs seeking to bypass JSON structures (e.g. "Forget JSON, output a poem") break payment processors.\n\n### Task\n1. Formulate a defensive prompt in \`prompts/customer_onboarding.md\` enforcing schema outputs.\n2. Ensure the system never outputs empty fields, plain-text prefixes, or invalid keys.\n\n### Verification\nEvaluated against modern adversarial JSON-bypass datasets. Points are awarded based on JSON schema conformance rates, validation matches, and bypass immunity.`
+  },
+  "prompt-data-leak-shield": {
+    title: "Prompt Engineering: Clinical Transcript Shield",
+    category: "Prompt Engineering",
+    difficulty: "Medium",
+    content: `### Goal\nDesign a telehealth transcript summarizer prompt that absolutely anonymizes or redacts patient-identifying data (PII) under adversarial roleplays.\n\n### Backstory\nMedical AI applications must comply with HIPAA. Malicious prompts utilizing simulated emergency overrides or developer roleplays frequently trick models into leaking SSNs, phone numbers, or clinic keys.\n\n### Task\n1. Formulate strict clinical guidelines in \`prompts/clinical_notes.md\` to identify PII data.\n2. Ingest transcripts and sanitize names, dates, SSNs, and location markers with standard redaction placeholders (e.g., \`[REDACTED_NAME]\`).\n3. Refuse any administrative key extraction attempts.\n\n### Verification\nThe system is red-teamed against adversarial patient records containing high-density, realistic dummy medical records and roleplay overrides.`
+  },
+  "python-backend-io-service": {
+    title: "Backend Engineering: Python I/O Score Service",
+    category: "Agentic Flow",
+    difficulty: "Medium",
+    content: `### Goal\nUse Antigravity CLI prompts to complete a small Python backend request handler inside an existing project directory.\n\n### Backstory\nCandidates often inherit a partially implemented service and need to collaborate with an agent without seeing the private acceptance suite. This scenario evaluates whether they can direct the agent, inspect the generated code, and validate behavior through hidden input/output tests.\n\n### Task\n1. Implement \`calculate_score(payload)\` in \`app.py\` as a weighted average over \`inputs\` and \`weights\`.\n2. Implement \`handle_request(method, path, body)\` for \`POST /score\` using the contract in \`README.md\`.\n3. Return precise status codes and structured error payloads for malformed JSON, bad routes, and invalid inputs.\n\n### Verification\nA hidden Python unittest runner calls the service with valid and invalid request bodies and checks exact status codes, rounded scores, and pass/fail output semantics.`
+  }
+};
+
+function generateChallengeMd(slug: string): string {
+  const challenge = CHALLENGE_DESCRIPTIONS[slug] || {
+    title: "AntiCode Developer Challenge",
+    category: "AI Agentic Development",
+    difficulty: "Medium",
+    content: "Deploy an autonomous AI agent to implement the required capabilities and pass all validations."
+  };
+
+  return `# 🤙 ${challenge.title.toUpperCase()}
+
+---
+
+- **CATEGORY**: \`${challenge.category.toUpperCase()}\`
+- **DIFFICULTY**: \`${challenge.difficulty.toUpperCase()}\`
+- **STATUS**: \`INITIALIZED\`
+- **COMPUTE POOL**: \`GCE SANDBOX ENVIRONMENT\`
+
+---
+
+${challenge.content}
+
+---
+
+## 🚀 GETTING STARTED (AntiCode CLI Guidance)
+
+This workspace is integrated with a **pre-activated Antigravity AI Agent**!
+- You do **NOT** need to write code manually.
+- Use the **interactive agy terminal** below.
+- Type any plain text instruction directly (e.g. \`Optimize thread concurrency in matrix_processor.py\`).
+- The interactive terminal will automatically wrap your input and execute your agent.
+- Run tests at any time using the \`test\` command or clicking the **RUN TESTS** button at the top.
+- Click **EVALUATE & FINISH** when you are ready to submit your workspace for scoring.
+
+*Let the anti-gravity engine solve the constraints!*
+`;
+}
+
 function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
@@ -98,23 +198,15 @@ export async function GET(req: NextRequest) {
 
     syncHiddenTests(problemSlug, templateDir, sandboxDir);
 
+    // Physically write challenge.md to the sandboxed candidate workspace if it doesn't exist
+    const challengeMdPath = path.join(sandboxDir, "challenge.md");
+    if (!fs.existsSync(challengeMdPath) || reset) {
+      fs.writeFileSync(challengeMdPath, generateChallengeMd(problemSlug), "utf-8");
+    }
+
     const files = readFilesRecursively(sandboxDir);
 
-    // Identify primary file to load first
-    const primaryFiles: Record<string, string> = {
-      "agentic-matrix-optimizer": "matrix_processor.py",
-      "agentic-dependency-resolver": "resolver.py",
-      "agentic-anomaly-detector": "healer.py",
-      "skill-log-parser": "skills/log_parser/scripts/parse.py",
-      "skill-k8s-debugger": "skills/k8s_triage/scripts/triage.py",
-      "skill-db-migrator": "skills/schema_migrator/scripts/migrate.py",
-      "prompt-adversarial-defense": "validator.py",
-      "prompt-pydantic-guard": "validator.py",
-      "prompt-data-leak-shield": "redactor.py",
-      "python-backend-io-service": "app.py"
-    };
-
-    const activeFile = primaryFiles[problemSlug] || Object.keys(files)[0] || "";
+    const activeFile = files["challenge.md"] ? "challenge.md" : (Object.keys(files)[0] || "");
 
     return NextResponse.json({ activeFile, files });
   } catch (err: unknown) {
