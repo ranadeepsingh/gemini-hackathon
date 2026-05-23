@@ -531,7 +531,6 @@ function WorkspaceCockpit() {
   const searchParams = useSearchParams();
   const problemSlug = searchParams.get("problem") || "agentic-matrix-optimizer";
   const sessionId = searchParams.get("session") || "demo-session-id";
-  const resetSandbox = searchParams.get("reset") === "true";
 
   // Dynamic Workspace Files State
   const [files, setFiles] = useState<Record<string, string>>({});
@@ -983,7 +982,10 @@ function WorkspaceCockpit() {
           "Loading candidate workspace files..."
         ], ""));
 
-        const res = await fetch(`/api/workspace?problemSlug=${problemSlug}&sessionId=${sessionId}${resetSandbox ? "&reset=true" : ""}`);
+        const searchParamsObj = new URLSearchParams(window.location.search);
+        const shouldReset = searchParamsObj.get("reset") === "true";
+
+        const res = await fetch(`/api/workspace?problemSlug=${problemSlug}&sessionId=${sessionId}${shouldReset ? "&reset=true" : ""}`);
         if (!res.ok) throw new Error("Workspace initialization failed");
         const data = await res.json() as WorkspaceResponse;
 
@@ -994,6 +996,13 @@ function WorkspaceCockpit() {
           "Official Antigravity SDK terminal ready.",
           "Commands: status, run, prompt \"...\", ask \"...\", test, clear."
         ], ""));
+
+        // Strip reset parameter from URL so it doesn't trigger on subsequent refreshes
+        if (shouldReset) {
+          searchParamsObj.delete("reset");
+          const newSearch = searchParamsObj.toString();
+          router.replace(`${window.location.pathname}${newSearch ? `?${newSearch}` : ""}`, { scroll: false });
+        }
       } catch (err: unknown) {
         console.error(err);
         if (active) {
@@ -1009,7 +1018,7 @@ function WorkspaceCockpit() {
     return () => {
       active = false;
     };
-  }, [problemSlug, resetSandbox, reconcileWorkspaceFiles, sessionId]);
+  }, [problemSlug, reconcileWorkspaceFiles, sessionId, router]);
 
   // Debounced auto-save to host filesystem
   useEffect(() => {

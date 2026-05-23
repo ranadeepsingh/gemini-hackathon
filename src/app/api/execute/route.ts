@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { spawn, spawnSync } from "child_process";
 import path from "path";
 import fs from "fs";
-import { supabase } from "@/lib/supabase/client";
+import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { refreshOutdatedStarterFiles } from "@/lib/workspace/starter-repairs";
 
 const SANDBOX_ROOT = path.join(/*turbopackIgnore: true*/ process.cwd(), "candidate_workspace");
@@ -421,10 +421,11 @@ export async function POST(req: NextRequest) {
     // If sessionId is present, parse metrics and update database
     if (sessionId) {
       try {
+        const supabaseServer = getSupabaseServerClient();
         const metricsMatch = result.stdout.match(/\[METRICS\] prompt_tokens=(\d+) candidates_tokens=(\d+) total_tokens=(\d+) cost_usd=([\d\.]+)/);
         
         // Fetch current values
-        const { data: session } = await supabase
+        const { data: session } = await supabaseServer
           .from("interview_sessions")
           .select("agent_deploy_count, test_run_count, total_llm_calls, total_input_tokens, total_output_tokens, cost_usd")
           .eq("id", sessionId)
@@ -457,7 +458,7 @@ export async function POST(req: NextRequest) {
             costUsd += parseFloat(metricsMatch[4]);
           }
 
-          await supabase
+          await supabaseServer
             .from("interview_sessions")
             .update({
               agent_deploy_count: agentDeployCount,
