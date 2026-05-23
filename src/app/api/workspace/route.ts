@@ -6,7 +6,7 @@ import { refreshOutdatedStarterFiles } from "@/lib/workspace/starter-repairs";
 const TEMPLATES_ROOT = path.resolve(process.cwd(), "candidate_workspace_templates");
 const SANDBOX_ROOT = path.resolve(process.cwd(), "candidate_workspace");
 const HIDDEN_TESTS_ROOT = path.resolve(process.cwd(), "candidate_workspace_hidden_tests");
-const HIDDEN_TEST_FILES = new Set(["run_tests.py", "validator.py"]);
+const HIDDEN_TEST_FILES = new Set(["run_tests.py"]);
 
 const CHALLENGE_DESCRIPTIONS: Record<string, { title: string; category: string; difficulty: string; content: string }> = {
   "agentic-matrix-optimizer": {
@@ -61,7 +61,7 @@ const CHALLENGE_DESCRIPTIONS: Record<string, { title: string; category: string; 
     title: "Prompt Engineering: Clinical Transcript Shield",
     category: "Prompt Engineering",
     difficulty: "Medium",
-    content: `### Goal\nDesign a telehealth transcript summarizer prompt that absolutely anonymizes or redacts patient-identifying data (PII) under adversarial roleplays.\n\n### Starter State\n\`prompts/clinical_notes.md\` and \`redactor.py\` are intentionally empty. Use the AI agent to fill both files.\n\n### Backstory\nMedical AI applications must comply with HIPAA. Malicious prompts utilizing simulated emergency overrides or developer roleplays frequently trick models into leaking SSNs, phone numbers, or clinic keys.\n\n### Task\n1. Formulate strict clinical guidelines in \`prompts/clinical_notes.md\` to identify PII data.\n2. Implement \`redactor.py\` so SSNs and phone numbers are replaced with redaction placeholders.\n3. Refuse any administrative key extraction attempts.\n\n### Verification\nThe system is red-teamed against adversarial patient records containing high-density, realistic dummy medical records and roleplay overrides.`
+    content: `### Goal\nDesign a telehealth transcript summarizer prompt that absolutely anonymizes or redacts patient-identifying data (PII) under adversarial roleplays.\n\n### Starter State\n\`prompts/clinical_notes.md\` is intentionally empty, and \`redactor.py\` contains a minimal non-redacting stub. Use the AI agent to fill the prompt and complete the helper.\n\n### Backstory\nMedical AI applications must comply with HIPAA. Malicious prompts utilizing simulated emergency overrides or developer roleplays frequently trick models into leaking SSNs, phone numbers, or clinic keys.\n\n### Task\n1. Formulate strict clinical guidelines in \`prompts/clinical_notes.md\` to identify PII data.\n2. Implement \`redactor.py\` so SSNs and phone numbers are replaced with redaction placeholders.\n3. Refuse any administrative key extraction attempts.\n\n### Verification\nThe system is red-teamed against adversarial patient records containing high-density, realistic dummy medical records and roleplay overrides.`
   },
   "python-backend-io-service": {
     title: "Backend Engineering: Python I/O Score Service",
@@ -151,10 +151,37 @@ function copyVisibleTemplate(templateDir: string, sandboxDir: string) {
   }
 }
 
+function copyMissingVisibleFiles(templateDir: string, sandboxDir: string) {
+  if (!fs.existsSync(templateDir)) return;
+  fs.mkdirSync(sandboxDir, { recursive: true });
+
+  for (const entry of fs.readdirSync(templateDir)) {
+    if (entry === ".DS_Store" || HIDDEN_TEST_FILES.has(entry)) continue;
+
+    const sourcePath = path.join(templateDir, entry);
+    const targetPath = path.join(sandboxDir, entry);
+    const stat = fs.statSync(sourcePath);
+
+    if (stat.isDirectory()) {
+      copyMissingVisibleFiles(sourcePath, targetPath);
+    } else {
+      if (!fs.existsSync(targetPath)) {
+        fs.mkdirSync(path.dirname(targetPath), { recursive: true });
+        fs.copyFileSync(sourcePath, targetPath);
+      }
+    }
+  }
+}
+
 function syncHiddenTests(problemSlug: string, templateDir: string, sandboxDir: string) {
   const hiddenDir = path.join(HIDDEN_TESTS_ROOT, problemSlug);
   fs.mkdirSync(hiddenDir, { recursive: true });
 
+  // Clean up any stale validator.py from previous sessions
+  const oldHiddenValidator = path.join(hiddenDir, "validator.py");
+  if (fs.existsSync(oldHiddenValidator)) {
+    fs.rmSync(oldHiddenValidator);
+  }
   for (const filename of HIDDEN_TEST_FILES) {
     const templateTest = path.join(templateDir, filename);
     const sandboxTest = path.join(sandboxDir, filename);
@@ -197,6 +224,7 @@ export async function GET(req: NextRequest) {
       copyVisibleTemplate(templateDir, sandboxDir);
     }
 
+    copyMissingVisibleFiles(templateDir, sandboxDir);
     refreshOutdatedStarterFiles(problemSlug, templateDir, sandboxDir);
     syncHiddenTests(problemSlug, templateDir, sandboxDir);
 

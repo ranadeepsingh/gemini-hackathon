@@ -178,6 +178,9 @@ interface GradeReport {
     score: number;
     feedback: string;
   }>;
+  test_cases_passed?: number;
+  test_cases_total?: number;
+  is_passing?: boolean;
 }
 
 // Client-side fallback rubrics for resilient offline capability
@@ -1300,9 +1303,9 @@ function WorkspaceCockpit() {
           score_prompt_engineering: gradeReport.score_prompt_engineering,
           score_aggregate: gradeReport.score_aggregate,
           summary_review: gradeReport.summary_review,
-          test_cases_passed: gradeReport.score_aggregate >= 70 ? 3 : 2,
-          test_cases_total: 3,
-          is_passing: gradeReport.score_aggregate >= 70,
+          test_cases_passed: gradeReport.test_cases_passed !== undefined ? gradeReport.test_cases_passed : (gradeReport.score_aggregate >= 70 ? 3 : 2),
+          test_cases_total: gradeReport.test_cases_total !== undefined ? gradeReport.test_cases_total : 3,
+          is_passing: gradeReport.is_passing !== undefined ? gradeReport.is_passing : (gradeReport.score_aggregate >= 70),
           detailed_results: gradeReport
         })
         .select()
@@ -1838,7 +1841,9 @@ function WorkspaceCockpit() {
                 <span className="text-base font-bold font-mono tracking-tight text-white block">
                   {totalTokens.toLocaleString()}
                 </span>
-                <span className="font-mono text-[8px] text-text-muted block uppercase">LIMIT: 250K</span>
+                <span className="font-mono text-[8px] text-text-muted block uppercase">
+                  P: {(sessionDetails?.total_input_tokens || 0).toLocaleString()} | R: {(sessionDetails?.total_output_tokens || 0).toLocaleString()}
+                </span>
               </div>
               <div className="bg-bg-dark/40 border border-slate-800/50 p-2.5 rounded-xl text-center space-y-1 shadow-[inset_0_2px_4px_rgba(0,0,0,0.4)]">
                 <span className="font-mono text-[8px] text-text-muted uppercase tracking-wider block">REASONING</span>

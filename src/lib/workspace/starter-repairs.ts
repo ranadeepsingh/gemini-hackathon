@@ -9,6 +9,9 @@ const OUTDATED_STARTER_REPAIRS: Record<string, Record<string, string>> = {
     # and support JSON line parsing with graceful fallbacks.
     return {}
 `
+  },
+  "prompt-data-leak-shield": {
+    "redactor.py": ""
   }
 };
 

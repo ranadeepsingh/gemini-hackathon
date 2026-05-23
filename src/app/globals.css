@@ -152,6 +152,12 @@ label[for]:focus-visible {
   will-change: left, transform;
 }
 
+.anti-gravity-cat-track--center {
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
 .anti-gravity-cat {
   position: relative;
   width: 76px;

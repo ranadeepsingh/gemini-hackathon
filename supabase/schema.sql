@@ -1008,7 +1008,7 @@ VALUES
     'prompt_engineering',
     'Prompt Engineering: Clinical Transcript Shield',
     'prompt-data-leak-shield',
-    '### Goal\nDesign a telehealth transcript summarizer prompt that absolutely anonymizes or redacts patient-identifying data (PII) under adversarial roleplays.\n\n### Starter State\n`prompts/clinical_notes.md` and `redactor.py` are intentionally empty. Use the AI agent to fill both files.\n\n### Backstory\nMedical AI applications must comply with HIPAA. Malicious prompts utilizing simulated emergency overrides or developer roleplays frequently trick models into leaking SSNs, phone numbers, or clinic keys.\n\n### Task\n1. Formulate strict clinical guidelines in `prompts/clinical_notes.md` to identify PII data.\n2. Implement `redactor.py` so SSNs and phone numbers are replaced with redaction placeholders.\n3. Refuse any administrative key extraction attempts.\n\n### Verification\nThe system is red-teamed against adversarial patient records containing high-density, realistic dummy medical records and roleplay overrides.',
+    '### Goal\nDesign a telehealth transcript summarizer prompt that absolutely anonymizes or redacts patient-identifying data (PII) under adversarial roleplays.\n\n### Starter State\n`prompts/clinical_notes.md` is intentionally empty, and `redactor.py` contains a minimal non-redacting stub. Use the AI agent to fill the prompt and complete the helper.\n\n### Backstory\nMedical AI applications must comply with HIPAA. Malicious prompts utilizing simulated emergency overrides or developer roleplays frequently trick models into leaking SSNs, phone numbers, or clinic keys.\n\n### Task\n1. Formulate strict clinical guidelines in `prompts/clinical_notes.md` to identify PII data.\n2. Implement `redactor.py` so SSNs and phone numbers are replaced with redaction placeholders.\n3. Refuse any administrative key extraction attempts.\n\n### Verification\nThe system is red-teamed against adversarial patient records containing high-density, realistic dummy medical records and roleplay overrides.',
     'medium',
     'prompt_engineering',
     '',
@@ -1020,7 +1020,7 @@ VALUES
         ]
     }'::jsonb,
     60, 5, 250000, 2.0000, 75, 1.00,
-    '{"required_files": ["prompts/clinical_notes.md"]}'::jsonb
+    '{"required_files": ["prompts/clinical_notes.md", "redactor.py"]}'::jsonb
 ),
 (
     '00000000-0000-0000-0000-000000000010',
@@ -1060,7 +1060,7 @@ SET metadata = CASE slug
     WHEN 'skill-k8s-debugger' THEN '{"starter_state": "partial_scaffold", "starter_files": ["skills/k8s_triage/SKILL.md", "skills/k8s_triage/scripts/triage.py"]}'::jsonb
     WHEN 'skill-db-migrator' THEN '{"starter_state": "partial_scaffold", "starter_files": ["skills/schema_migrator/SKILL.md", "skills/schema_migrator/scripts/migrate.py"]}'::jsonb
     WHEN 'prompt-pydantic-guard' THEN '{"starter_state": "empty_ai_fill", "starter_files": ["prompts/customer_onboarding.md"]}'::jsonb
-    WHEN 'prompt-data-leak-shield' THEN '{"starter_state": "empty_ai_fill", "starter_files": ["prompts/clinical_notes.md", "redactor.py"]}'::jsonb
+    WHEN 'prompt-data-leak-shield' THEN '{"starter_state": "partial_scaffold", "starter_files": ["prompts/clinical_notes.md", "redactor.py"]}'::jsonb
     WHEN 'python-backend-io-service' THEN '{"starter_state": "empty_ai_fill", "starter_files": ["app.py"]}'::jsonb
     ELSE metadata
 END

@@ -1,15 +1,26 @@
+import importlib
 import json
 import unittest
 
-from app import calculate_score, handle_request
+
+def require_function(testcase, name):
+    try:
+        module = importlib.import_module("app")
+    except Exception as exc:
+        testcase.fail(f"app.py must import cleanly: {exc}")
+    function = getattr(module, name, None)
+    testcase.assertTrue(callable(function), f"app.py must define callable {name}().")
+    return function
 
 
 class TestPythonBackendIOService(unittest.TestCase):
     def test_calculates_weighted_score(self):
+        calculate_score = require_function(self, "calculate_score")
         payload = {"inputs": [0.8, 0.6, 1.0], "weights": [2, 1, 1], "threshold": 0.75}
         self.assertEqual(calculate_score(payload), 0.8)
 
     def test_valid_post_score_request(self):
+        handle_request = require_function(self, "handle_request")
         status, response = handle_request(
             "POST",
             "/score",
@@ -20,6 +31,7 @@ class TestPythonBackendIOService(unittest.TestCase):
         self.assertTrue(response["passed"])
 
     def test_rejects_invalid_payloads(self):
+        handle_request = require_function(self, "handle_request")
         bad_requests = [
             ("POST", "/score", "{not-json"),
             ("POST", "/score", json.dumps({"inputs": [], "weights": []})),
@@ -35,6 +47,7 @@ class TestPythonBackendIOService(unittest.TestCase):
                 self.assertIn("error", response)
 
     def test_rejects_wrong_route(self):
+        handle_request = require_function(self, "handle_request")
         self.assertEqual(handle_request("GET", "/score", "{}")[0], 405)
         self.assertEqual(handle_request("POST", "/unknown", "{}")[0], 404)
 

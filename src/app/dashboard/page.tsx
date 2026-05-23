@@ -230,6 +230,103 @@ function generateGceInstanceName(problemSlug: string) {
   return `anticode-${safeSlug}-${Date.now().toString(36)}`;
 }
 
+const DEMO_DAILY_PROBLEM: ProblemSummary = {
+  id: "00000000-0000-0000-0000-000000000001",
+  title: "AI Agentic Engineering: Matrix Latency Cleanup",
+  slug: "agentic-matrix-optimizer",
+  description:
+    "Review a demo-ready matrix helper, verify hidden tests, and submit a clean Antigravity evaluation report.",
+  difficulty: "easy",
+  category: "agentic_flow",
+  recommended_time_mins: 30,
+  passing_score_threshold: 70,
+  max_token_budget: 25000,
+  max_cost_budget_usd: 2.5,
+};
+
+function buildDemoActivityDays(): ActivityDay[] {
+  return [0, 1, 2, 4, 7].map((daysAgo) => {
+    const date = new Date(`${getTodayDateKey()}T00:00:00.000Z`);
+    date.setUTCDate(date.getUTCDate() - daysAgo);
+    return {
+      activity_date: date.toISOString().slice(0, 10),
+      login_count: daysAgo === 0 ? 2 : 1,
+    };
+  });
+}
+
+function buildDemoSessions(): DashboardSession[] {
+  const now = Date.now();
+  return [
+    {
+      id: "demo-session-matrix",
+      status: "completed",
+      problem_id: DEMO_DAILY_PROBLEM.id,
+      created_at: new Date(now - 1000 * 60 * 45).toISOString(),
+      started_at: new Date(now - 1000 * 60 * 42).toISOString(),
+      ended_at: new Date(now - 1000 * 60 * 35).toISOString(),
+      duration_seconds: 420,
+      agent_deploy_count: 1,
+      test_run_count: 2,
+      compile_error_count: 0,
+      total_llm_calls: 1,
+      total_input_tokens: 6200,
+      total_output_tokens: 1300,
+      total_reasoning_tokens: 900,
+      cost_usd: 0.18,
+      problems: DEMO_DAILY_PROBLEM,
+    },
+    {
+      id: "demo-session-log-parser",
+      status: "completed",
+      problem_id: "00000000-0000-0000-0000-000000000002",
+      created_at: new Date(now - 1000 * 60 * 60 * 6).toISOString(),
+      duration_seconds: 680,
+      agent_deploy_count: 2,
+      test_run_count: 3,
+      compile_error_count: 1,
+      total_llm_calls: 2,
+      total_input_tokens: 11800,
+      total_output_tokens: 2600,
+      total_reasoning_tokens: 1600,
+      cost_usd: 0.34,
+      problems: {
+        id: "00000000-0000-0000-0000-000000000002",
+        title: "AI Skill Writing: Custom Log Parser Skill",
+        slug: "skill-log-parser",
+        description: "Parse Apache and JSON logs through a custom Antigravity skill.",
+        difficulty: "hard",
+        category: "skill_verification",
+        recommended_time_mins: 45,
+        passing_score_threshold: 75,
+        max_token_budget: 32000,
+        max_cost_budget_usd: 3.5,
+      },
+    },
+  ];
+}
+
+const DEMO_REPORTS: EvaluationReport[] = [
+  {
+    id: "demo-report-matrix",
+    session_id: "demo-session-matrix",
+    score_aggregate: 91,
+    test_cases_passed: 3,
+    test_cases_total: 3,
+    is_passing: true,
+    created_at: new Date().toISOString(),
+  },
+  {
+    id: "demo-report-log-parser",
+    session_id: "demo-session-log-parser",
+    score_aggregate: 93,
+    test_cases_passed: 3,
+    test_cases_total: 3,
+    is_passing: true,
+    created_at: new Date(Date.now() - 1000 * 60 * 60 * 6).toISOString(),
+  },
+];
+
 export default function DashboardPage() {
   const router = useRouter();
   const [user, setUser] = useState<{ id: string; email?: string } | null>(null);
@@ -256,6 +353,29 @@ export default function DashboardPage() {
 
         if (authError) throw authError;
         if (!authData.session?.user) {
+          const demoRole = typeof window !== "undefined" ? localStorage.getItem("demo_role") : null;
+          if (demoRole) {
+            const normalizedRole = demoRole.toLowerCase() === "interviewer" ? "interviewer" : "candidate";
+            setUser({
+              id: "demo-user-id",
+              email: `${normalizedRole}@anticode.demo`,
+            });
+            setProfile({
+              full_name: `Demo ${normalizedRole.charAt(0).toUpperCase() + normalizedRole.slice(1)}`,
+              username: `demo_${normalizedRole}`,
+              role: normalizedRole,
+            });
+            setDailyChallenge({
+              challenge_date: getTodayDateKey(),
+              spotlight_label: "Demo Daily Challenge",
+              problem: DEMO_DAILY_PROBLEM,
+            });
+            setActivityDays(buildDemoActivityDays());
+            setSessions(buildDemoSessions());
+            setReports(DEMO_REPORTS);
+            return;
+          }
+
           router.replace("/login");
           return;
         }
@@ -452,6 +572,11 @@ export default function DashboardPage() {
     try {
       setStartingDaily(true);
       setErrorMessage(null);
+
+      if (user.id === "demo-user-id") {
+        router.push(`/workspace?problem=${dailyChallenge.problem.slug}&session=demo-session-id&reset=true`);
+        return;
+      }
 
       const { data, error } = await withClientTimeout(
         supabase

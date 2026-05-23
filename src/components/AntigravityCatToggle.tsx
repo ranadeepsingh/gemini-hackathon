@@ -18,6 +18,7 @@ interface CatRoute {
 }
 
 const CAT_ROUTE_PAUSE_MS = 2800;
+const CAT_INITIAL_CENTER_PAUSE_MS = 1200;
 const CAT_ROUTE_TIMES = [0, 0.015, 0.33, 0.39, 0.55, 0.61, 0.82, 1];
 const CAT_FALL_DISTANCE = 220;
 const CAT_FALL_DURATION = 1.05;
@@ -105,9 +106,13 @@ export default function AntigravityCatToggle({ className = "" }: AntigravityCatT
       return;
     }
 
+    const routeDelay = catRoute
+      ? catRoute.duration * 1000 + CAT_ROUTE_PAUSE_MS
+      : CAT_INITIAL_CENTER_PAUSE_MS;
+
     const routeTimer = window.setTimeout(() => {
       setCatRoute(createCatRoute());
-    }, catRoute ? catRoute.duration * 1000 + CAT_ROUTE_PAUSE_MS : 0);
+    }, routeDelay);
 
     return () => window.clearTimeout(routeTimer);
   }, [catEnabled, catFalling, catRoute, shouldReduceMotion]);
@@ -198,7 +203,7 @@ export default function AntigravityCatToggle({ className = "" }: AntigravityCatT
         {showCatLayer && (
           <motion.div
             aria-hidden="true"
-            className="anti-gravity-cat-layer pointer-events-none absolute inset-0 overflow-visible"
+            className="anti-gravity-cat-layer pointer-events-none fixed inset-0 overflow-visible"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -206,7 +211,7 @@ export default function AntigravityCatToggle({ className = "" }: AntigravityCatT
           >
             {shouldReduceMotion || !catRoute ? (
               <div
-                className="anti-gravity-cat-track pointer-events-auto cursor-pointer"
+                className="anti-gravity-cat-track anti-gravity-cat-track--center pointer-events-auto cursor-pointer"
                 onClick={handleCatClick}
               >
                 {catGraphic}

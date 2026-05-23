@@ -18,6 +18,11 @@ function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
+function isPathInside(parentDir: string, targetPath: string) {
+  const relative = path.relative(parentDir, targetPath);
+  return relative === "" || (!!relative && !relative.startsWith("..") && !path.isAbsolute(relative));
+}
+
 function tokenizeCommand(command: string): string[] {
   const tokens: string[] = [];
   let current = "";

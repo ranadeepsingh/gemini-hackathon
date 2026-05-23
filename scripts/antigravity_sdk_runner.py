@@ -46,6 +46,32 @@ def selected_model() -> str:
     return os.environ.get("AGY_SDK_MODEL") or os.environ.get("GEMINI_CASE_MODEL") or "gemini-3.5-flash"
 
 
+def estimate_embedding_tokens(text: str) -> int:
+    if not text:
+        return 0
+    try:
+        import tiktoken
+        encoding = tiktoken.get_encoding("cl100k_base")
+        return len(encoding.encode(text))
+    except Exception:
+        import re
+        tokens_count = 0
+        pattern = re.compile(r"([a-zA-Z0-9]+|\n|[^\w\s]|\s+)")
+        matches = pattern.findall(text)
+        for match in matches:
+            if not match:
+                continue
+            if match == "\n":
+                tokens_count += 1
+            elif match.isspace():
+                tokens_count += max(1, len(match) // 4)
+            elif match.isalnum():
+                tokens_count += max(1, (len(match) + 3) // 4)
+            else:
+                tokens_count += len(match)
+        return tokens_count
+
+
 def validate_sdk_available() -> bool:
     try:
         import google.antigravity  # noqa: F401
@@ -195,7 +221,8 @@ async def run_sdk_agent(workspace: pathlib.Path, problem: str, mode: str, prompt
 
     try:
         async with Agent(config) as agent:
-            response = await agent.chat(build_prompt(problem, mode, prompt))
+            prompt_text = build_prompt(problem, mode, prompt)
+            response = await agent.chat(prompt_text)
             final_text: list[str] = []
             async for chunk in response.chunks:
                 if isinstance(chunk, types.Thought):
@@ -213,10 +240,12 @@ async def run_sdk_agent(workspace: pathlib.Path, problem: str, mode: str, prompt
                 safe_print(f"[antigravity sdk] [RESULT] {response_text}")
 
             usage = response.usage_metadata
-            prompt_tokens = usage.prompt_token_count if usage and usage.prompt_token_count else 0
+            # Recalculate prompt tokens with tiktoken
+            prompt_tokens = estimate_embedding_tokens(prompt_text)
             output_tokens = usage.candidates_token_count if usage and usage.candidates_token_count else 0
             thoughts_tokens = usage.thoughts_token_count if usage and usage.thoughts_token_count else 0
-            total_tokens = usage.total_token_count if usage and usage.total_token_count else prompt_tokens + output_tokens + thoughts_tokens
+            total_tokens = prompt_tokens + output_tokens + thoughts_tokens
+            cost_usd = (prompt_tokens * 0.00000015) + (output_tokens * 0.00000060)
     except Exception as exc:
         safe_print(f"[antigravity sdk] ERROR: {shorten(exc)}")
         return 1
@@ -230,7 +259,7 @@ async def run_sdk_agent(workspace: pathlib.Path, problem: str, mode: str, prompt
 
     safe_print(
         f"[METRICS] prompt_tokens={prompt_tokens} candidates_tokens={output_tokens} "
-        f"total_tokens={total_tokens} cost_usd=0.0000"
+        f"total_tokens={total_tokens} cost_usd={cost_usd:.6f}"
     )
     return 0
 

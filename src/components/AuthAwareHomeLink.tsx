@@ -19,15 +19,18 @@ export default function AuthAwareHomeLink({
 
   useEffect(() => {
     let mounted = true;
+    const hasDemoSession = () => (
+      typeof window !== "undefined" && !!localStorage.getItem("demo_role")
+    );
 
     supabase.auth.getSession().then(({ data }) => {
-      if (mounted && data.session?.user) {
-        setHref("/dashboard");
+      if (mounted) {
+        setHref(data.session?.user || hasDemoSession() ? "/dashboard" : "/");
       }
     });
 
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      setHref(session?.user ? "/dashboard" : "/");
+      setHref(session?.user || hasDemoSession() ? "/dashboard" : "/");
     });
 
     return () => {

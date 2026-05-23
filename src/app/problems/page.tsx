@@ -72,7 +72,7 @@ const STARTER_STATE_BY_SLUG: Record<string, StarterState> = {
   "prompt-adversarial-defense": "empty_ai_fill",
   "agentic-dependency-resolver": "empty_ai_fill",
   "prompt-pydantic-guard": "empty_ai_fill",
-  "prompt-data-leak-shield": "empty_ai_fill",
+  "prompt-data-leak-shield": "partial_scaffold",
   "python-backend-io-service": "empty_ai_fill"
 };
 
@@ -295,7 +295,7 @@ const LOCAL_FALLBACK_PROBLEMS: Problem[] = [
     id: "00000000-0000-0000-0000-000000000009",
     title: "Prompt Engineering: Clinical Transcript Shield",
     slug: "prompt-data-leak-shield",
-    description: "### Goal\nDesign a telehealth transcript summarizer prompt that absolutely anonymizes or redacts patient-identifying data (PII) under adversarial roleplays.\n\n### Starter State\n`prompts/clinical_notes.md` and `redactor.py` are intentionally empty. Use the AI agent to fill both files.\n\n### Backstory\nMedical AI applications must comply with HIPAA. Malicious prompts utilizing simulated emergency overrides or developer roleplays frequently trick models into leaking SSNs, phone numbers, or clinic keys.\n\n### Task\n1. Formulate strict clinical guidelines in `prompts/clinical_notes.md` to identify PII data.\n2. Implement `redactor.py` so SSNs and phone numbers are replaced with redaction placeholders.\n3. Refuse any administrative key extraction attempts.\n\n### Verification\nThe system is red-teamed against adversarial patient records containing high-density, realistic dummy medical records and roleplay overrides.",
+    description: "### Goal\nDesign a telehealth transcript summarizer prompt that absolutely anonymizes or redacts patient-identifying data (PII) under adversarial roleplays.\n\n### Starter State\n`prompts/clinical_notes.md` is intentionally empty, and `redactor.py` contains a minimal non-redacting stub. Use the AI agent to fill the prompt and complete the helper.\n\n### Backstory\nMedical AI applications must comply with HIPAA. Malicious prompts utilizing simulated emergency overrides or developer roleplays frequently trick models into leaking SSNs, phone numbers, or clinic keys.\n\n### Task\n1. Formulate strict clinical guidelines in `prompts/clinical_notes.md` to identify PII data.\n2. Implement `redactor.py` so SSNs and phone numbers are replaced with redaction placeholders.\n3. Refuse any administrative key extraction attempts.\n\n### Verification\nThe system is red-teamed against adversarial patient records containing high-density, realistic dummy medical records and roleplay overrides.",
     difficulty: "medium",
     category: "prompt_engineering",
     starter_code: "",
@@ -312,8 +312,8 @@ const LOCAL_FALLBACK_PROBLEMS: Problem[] = [
     max_cost_budget_usd: 2.0000,
     passing_score_threshold: 75,
     passing_tests_ratio: 1.00,
-    passing_criteria: {"required_files": ["prompts/clinical_notes.md"]},
-    metadata: {"starter_state": "empty_ai_fill", "starter_files": ["prompts/clinical_notes.md", "redactor.py"]},
+    passing_criteria: {"required_files": ["prompts/clinical_notes.md", "redactor.py"]},
+    metadata: {"starter_state": "partial_scaffold", "starter_files": ["prompts/clinical_notes.md", "redactor.py"]},
     created_at: new Date().toISOString()
   },
   {
