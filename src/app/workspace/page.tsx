@@ -17,6 +17,7 @@ import {
   CheckCircle,
   Database,
   Lock,
+  RotateCcw,
   X
 } from "lucide-react";
 import Link from "next/link";
@@ -1106,6 +1107,46 @@ function WorkspaceCockpit() {
     });
   };
 
+  const handleResetWorkspace = async () => {
+    const confirmReset = window.confirm(
+      "Are you sure you want to reset this problem? This will permanently delete your changes and restore all files to their original starter state."
+    );
+    if (!confirmReset) return;
+
+    setIsRunning(true);
+    setTerminalLogs(prev => appendTerminalLogs(prev, [
+      "[system] Resetting workspace files to original starter state...",
+    ], terminalCwd));
+
+    try {
+      const res = await fetch(`/api/workspace?problemSlug=${problemSlug}&sessionId=${sessionId}&reset=true`);
+      if (!res.ok) throw new Error("Failed to reset workspace files on host.");
+      const data = await res.json() as WorkspaceResponse;
+
+      reconcileWorkspaceFiles(data);
+      await saveFilesToDb(data.files);
+
+      setTestPanel({
+        status: "idle",
+        passed: 0,
+        total: 0,
+        failedTests: [],
+        summary: "Run tests to see validation results."
+      });
+
+      setTerminalLogs(prev => appendTerminalLogs(prev, [
+        "[system] Workspace has been successfully reset to original starter state.",
+      ], terminalCwd));
+    } catch (err) {
+      console.error(err);
+      setTerminalLogs(prev => appendTerminalLogs(prev, [
+        `[system] Reset failed: ${getErrorMessage(err)}`,
+      ], terminalCwd));
+    } finally {
+      setIsRunning(false);
+    }
+  };
+
   // Deploy autonomous Antigravity solver loop
   const handleDeployAgent = async (agentCommand = "antigravity run") => {
     if (isRunning) return;
@@ -1675,6 +1716,17 @@ function WorkspaceCockpit() {
             <Layers className="w-3 h-3 text-agy-cyan" />
             <span>DASHBOARD</span>
           </Link>
+
+          <button
+            type="button"
+            aria-label="Reset workspace"
+            onClick={handleResetWorkspace}
+            disabled={isRunning || isEvaluating}
+            className="flex items-center gap-1.5 font-mono text-[10px] px-2.5 sm:px-3 py-1.5 rounded-lg border border-red-500/30 hover:border-red-500/60 bg-red-950/10 hover:bg-red-950/30 text-red-400 hover:text-red-300 transition-all shrink-0 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <RotateCcw className={`w-3 h-3 ${isRunning ? "animate-spin" : ""}`} />
+            <span className="hidden sm:inline">RESET</span>
+          </button>
 
           <button
             type="button"
